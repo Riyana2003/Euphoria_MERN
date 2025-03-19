@@ -29,7 +29,6 @@ const PaymentSuccess = () => {
           },
           body: JSON.stringify({ pidx, orderId }),
         });
-        console.log(orderId);
         const result = await response.json();
 
         if (response.ok && result.success) {
