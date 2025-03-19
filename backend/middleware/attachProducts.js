@@ -9,6 +9,7 @@ const attachProducts = async (req, res, next) => {
     next();
   } catch (error) {
     console.error('Error fetching products:', error);
+    console.error('Error fetching products:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch products' });
   }
 };
