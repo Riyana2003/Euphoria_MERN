@@ -49,9 +49,7 @@ const orderSchema = new mongoose.Schema({
       enum: ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled'],
       default: 'Pending',
     },
-    pidx: {
-      type: String,
-    },
+    pidx: { type: String, unique: false, sparse: true },
     date: {
       type: Date,
       default: Date.now,

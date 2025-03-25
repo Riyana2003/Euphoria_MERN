@@ -79,9 +79,9 @@ const PlaceOrder = () => {
       toast.error('Please select an address.');
       return;
     }
-
+  
     setIsLoading(true);
-
+  
     try {
       const address = addresses.find((addr) => addr.id === selectedAddress);
       const orderData = {
@@ -91,31 +91,27 @@ const PlaceOrder = () => {
         address: address.details,
         paymentMethod: 'Khalti',
       };
-
-      // Initiate Khalti payment through backend
+  
       const response = await fetch(`${backendUrl}/api/order/khalti/initiate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token || localStorage.getItem('token')}`,
+          Authorization: `Bearer ${token || localStorage.getItem('authToken')}`,
         },
         body: JSON.stringify(orderData),
       });
-
+  
       if (!response.ok) {
         throw new Error('Failed to initiate payment');
       }
-
+  
       const { paymentUrl } = await response.json();
-
-      // Ensure paymentUrl is valid before redirecting
+  
       if (!paymentUrl) {
         throw new Error('Invalid payment URL');
       }
-
-      // Redirect to Khalti payment page
+  
       window.location.href = paymentUrl;
-
     } catch (error) {
       console.error('Error initiating Khalti payment:', error);
       toast.error('Failed to initiate payment. Please try again.');
@@ -123,6 +119,8 @@ const PlaceOrder = () => {
       setIsLoading(false);
     }
   };
+  
+  
 
   // Handle placing order COD
   const handlePlaceOrder = async () => {
@@ -160,7 +158,7 @@ const PlaceOrder = () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${token || localStorage.getItem('token')}`,
+            Authorization: `Bearer ${token || localStorage.getItem('authToken')}`,
           },
           body: JSON.stringify(orderData),
         });
@@ -177,7 +175,7 @@ const PlaceOrder = () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${token || localStorage.getItem('token')}`,
+            Authorization: `Bearer ${token || localStorage.getItem('authToken')}`,
           },
           body: JSON.stringify(orderData),
         });

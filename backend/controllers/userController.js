@@ -8,27 +8,38 @@ const createToken = (id) => {
     return jwt.sign({ id }, process.env.JWT_SECRET);
 };
 
-// Route for user login 
+// Route for user login
 const loginUser = async (req, res) => {
     try {
         const { mobile, password } = req.body;
+
+        // Check if mobile and password are provided
+        if (!mobile || !password) {
+            return res.status(400).json({ success: false, message: "Mobile and password are required" });
+        }
+
+        // Find the user by mobile number
         const user = await userModel.findOne({ mobile });
         if (!user) {
-            return res.json({ success: false, message: "User doesn't exist" });
+            return res.status(401).json({ success: false, message: "User doesn't exist" });
         }
+
+        // Compare the provided password with the hashed password in the database
         const isMatch = await bcrypt.compare(password, user.password);
-        if (isMatch) {
-            const token = createToken(user._id);
-            res.json({ success: true, token, userId: user._id }); 
-        } else {
-            res.json({ success: false, message: "Invalid credentials" });
+        if (!isMatch) {
+            return res.status(401).json({ success: false, message: "Invalid credentials" });
         }
+
+        // Generate a token for the user
+        const token = createToken(user._id);
+
+        // Return success response with token and user ID
+        res.status(200).json({ success: true, token, userId: user._id });
     } catch (error) {
         console.error(error);
-        res.json({ success: false, message: error.message });
+        res.status(500).json({ success: false, message: "Internal server error" });
     }
 };
-
 
 // Route for user registration
 const registerUser = async (req, res) => {
@@ -37,28 +48,28 @@ const registerUser = async (req, res) => {
 
         // Ensure all fields are present
         if (!username || !mobile || !password || !confirm_password) {
-            return res.json({ success: false, message: "All fields are required" });
+            return res.status(400).json({ success: false, message: "All fields are required" });
         }
 
         // Check if the user already exists
         const exists = await userModel.findOne({ mobile });
         if (exists) {
-            return res.json({ success: false, message: "User already exists" });
+            return res.status(409).json({ success: false, message: "User already exists" });
         }
 
         // Validate mobile number
         if (!validator.isMobilePhone(mobile)) {
-            return res.json({ success: false, message: "Please enter a valid mobile number" });
+            return res.status(400).json({ success: false, message: "Please enter a valid mobile number" });
         }
 
         // Validate password strength
-        if (password.length  < 8) {
-            return res.json({ success: false, message: "Password must be at least 8 characters long" });
+        if (password.length < 8) {
+            return res.status(400).json({ success: false, message: "Password must be at least 8 characters long" });
         }
 
         // Validate confirm_password
         if (password !== confirm_password) {
-            return res.json({ success: false, message: "Passwords do not match" });
+            return res.status(400).json({ success: false, message: "Passwords do not match" });
         }
 
         // Hash the password
@@ -70,7 +81,7 @@ const registerUser = async (req, res) => {
             username,
             mobile,
             password: hashedPassword,
-            confirm_password: hashedPassword
+            confirm_password: hashedPassword,
         });
 
         const user = await newUser.save();
@@ -78,33 +89,31 @@ const registerUser = async (req, res) => {
         // Generate a token for the user
         const token = createToken(user._id);
 
-        res.json({ success: true, token });
+        // Return success response with token
+        res.status(201).json({ success: true, token });
     } catch (error) {
         console.error(error);
-        res.json({ success: false, message: error.message });
+        res.status(500).json({ success: false, message: "Internal server error" });
     }
 };
-
-
 
 // Route for admin login
 const adminLogin = async (req, res) => {
     try {
         const { mobile, password } = req.body;
 
-        if (mobile === process.env.ADMIN_MOBILE && password === process.env.ADMIN_PASSWORD){
-            const token = jwt.sign(mobile+password, process.env.JWT_SECRET);
-            res.json({success:true, token})
-        } else{
-            res.json({success:false,message:"Invalid credentials"})
+        // Check if mobile and password match admin credentials
+        if (mobile === process.env.ADMIN_MOBILE && password === process.env.ADMIN_PASSWORD) {
+            const token = jwt.sign(mobile + password, process.env.JWT_SECRET);
+            res.status(200).json({ success: true, token });
+        } else {
+            res.status(401).json({ success: false, message: "Invalid credentials" });
         }
     } catch (error) {
         console.log("Admin login error:", error);
         res.status(500).json({ success: false, message: "Internal server error" });
     }
-}; 
-
-
+};
 
 // Exporting the routes
 export { loginUser, registerUser, adminLogin };
