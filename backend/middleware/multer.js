@@ -1,36 +1,48 @@
 import multer from 'multer';
 import path from 'path';
 
-// Set up the storage engine with a unique file name and file filter
 const storage = multer.diskStorage({
-  destination: function (req, file, callback) {
-    // You can specify a directory here
-    callback(null, 'uploads/');
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/');
   },
-  filename: function (req, file, callback) {
-    // Generate a unique file name by adding a timestamp
+  filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    callback(null, uniqueSuffix + path.extname(file.originalname)); // Adding extension to the file name
-  },
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
 });
 
-// File validation: Accept only images
-const fileFilter = (req, file, callback) => {
+const fileFilter = (req, file, cb) => {
   const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif'];
   if (allowedMimeTypes.includes(file.mimetype)) {
-    callback(null, true); // Accept the file
+    cb(null, true);
   } else {
-    callback(new Error('Only image files are allowed'), false); // Reject the file
+    cb(new Error('Only image files are allowed'), false);
   }
 };
 
-// Set up multer with limits and file validation
 const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
   limits: {
-    fileSize: 5 * 1024 * 1024, // Limit file size to 5MB (adjust as needed)
-  },
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  }
 });
+
+// Dynamic field configuration that matches your frontend
+export const productUpload = upload.fields([
+  // Main product images
+  { name: 'image1', maxCount: 1 },
+  { name: 'image2', maxCount: 1 },
+  { name: 'image3', maxCount: 1 },
+  { name: 'image4', maxCount: 1 },
+  
+  // Shade images (supports up to 10 shades with 4 images each)
+  ...Array.from({ length: 10 }, (_, i) => [
+    { name: `shade${i}_image1`, maxCount: 1 },
+    { name: `shade${i}_image2`, maxCount: 1 },
+    { name: `shade${i}_image3`, maxCount: 1 },
+    { name: `shade${i}_image4`, maxCount: 1 }
+  ]).flat()
+]);
 
 export default upload;

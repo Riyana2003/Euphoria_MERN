@@ -12,9 +12,8 @@ const PaymentSuccess = () => {
   useEffect(() => {
     const verifyPayment = async () => {
       const pidx = searchParams.get('pidx');
-      const orderId = searchParams.get('orderId');
 
-      if (!pidx || !orderId) {
+      if (!pidx) {
         toast.error('Invalid payment details. Please try again.');
         navigate('/orders');
         return;
@@ -27,7 +26,7 @@ const PaymentSuccess = () => {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token || localStorage.getItem('authToken')}`,
           },
-          body: JSON.stringify({ pidx, orderId }),
+          body: JSON.stringify({ pidx }),
         });
 
         const result = await response.json();

@@ -4,10 +4,12 @@ import axios from 'axios';
 import React, { useEffect, useState } from 'react';
 import { backendUrl, currency } from '../App';
 import { toast } from 'react-toastify';
+import { useNavigate } from 'react-router-dom';
 
 const List = () => {
   const token = localStorage.getItem('token'); 
   const [list, setList] = useState([]);
+  const navigate = useNavigate();
 
   const fetchList = async () => {
     try {
@@ -48,6 +50,10 @@ const List = () => {
     }
   };
 
+  const handleEditProduct = (productId) => {
+    navigate(`/edit-product/${productId}`);
+  };
+
   useEffect(() => {
     fetchList();
   }, []); // Fetch product list when component mounts
@@ -57,13 +63,13 @@ const List = () => {
       <p className='mb-2'>All Products List</p>
       <div className='flex flex-col gap-2'>
         {/* Table Header */}
-        <div className='hidden md:grid grid-cols-[1fr_3fr_1fr_1fr_1fr_1fr] items-center py-1 px-2 border bg-gray-100 text-sm'>
+        <div className='hidden md:grid grid-cols-[1fr_3fr_1fr_1fr_1fr_1fr_1fr] items-center py-1 px-2 border bg-gray-100 text-sm'>
           <b>Image</b>
           <b>Name</b>
           <b>Brand</b>
           <b>Category</b>
           <b className='text-center'>Price</b>
-          <b className='text-center'>Action</b>
+          <b className='text-center'>Actions</b>
         </div>
 
         {/* Product List */}
@@ -71,22 +77,32 @@ const List = () => {
           list.map((item, index) => (
             <div
               key={index}
-              className='grid grid-cols-[1fr_3fr_1fr] md:grid-cols-[1fr_3fr_1fr_1fr_1fr_1fr] items-center gap-2 py-1 px-2 border text-sm'
+              className='grid grid-cols-[1fr_3fr_1fr] md:grid-cols-[1fr_3fr_1fr_1fr_1fr_1fr_1fr] items-center gap-2 py-1 px-2 border text-sm'
             >
               <img className='w-12' src={item.image?.[0]} alt={item.name} />
               <p>{item.name}</p>
-              <p>{item.brand}</p>
-              <p>{item.category}</p>
+              <p className='hidden md:block'>{item.brand}</p>
+              <p className='hidden md:block'>{item.category}</p>
               <p className='text-center'>
                 {currency}
                 {item.price}
               </p>
-              <p
-                onClick={() => removeProduct(item._id)}
-                className='text-right md:text-center cursor-pointer text-lg text-red-500 hover:text-red-700'
-              >
-                X
-              </p>
+              <div className='flex justify-center gap-3'>
+                <button
+                  onClick={() => handleEditProduct(item._id)}
+                  className='text-blue-500 hover:text-blue-700 cursor-pointer'
+                  title='Edit Product'
+                >
+                  ✏️
+                </button>
+                <button
+                  onClick={() => removeProduct(item._id)}
+                  className='text-red-500 hover:text-red-700 cursor-pointer'
+                  title='Delete Product'
+                >
+                  🗑️
+                </button>
+              </div>
             </div>
           ))
         ) : (
