@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable no-unused-vars */
 import React, { useContext, useEffect, useState } from 'react';
@@ -9,105 +8,39 @@ import RelatedProducts from '../components/RelatedProducts';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-const TryOnPopup = ({ product, shade, model, onClose, onModelChange }) => {
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-auto">
-        <div className="flex justify-between items-center border-b p-4">
-          <h3 className="text-xl font-bold">Virtual Try-On</h3>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-            ✕
-          </button>
-        </div>
-        
-        <div className="p-4">
-          <div className="flex flex-col md:flex-row gap-6">
-            <div className="flex-1">
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Select Model</label>
-                <select
-                  value={model}
-                  onChange={(e) => onModelChange(e.target.value)}
-                  className="w-full border border-gray-300 rounded-md p-2"
-                >
-                  <option value="model1">Model 1</option>
-                  <option value="model2">Model 2</option>
-                  <option value="model3">Model 3</option>
-                </select>
-              </div>
-              
-              <div className="bg-gray-100 rounded-lg p-4 flex items-center justify-center">
-                <div className="relative">
-                  <img 
-                    src={assets.try_on_placeholder} 
-                    alt="Virtual try-on placeholder" 
-                    className="max-h-[300px] object-contain"
-                  />
-                  {shade?.colorCode && (
-                    <div 
-                      className="absolute inset-0 opacity-50"
-                      style={{ 
-                        backgroundColor: shade.colorCode,
-                        mixBlendMode: 'multiply'
-                      }}
-                    />
-                  )}
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex-1">
-              <h4 className="font-medium text-lg mb-2">{product.name}</h4>
-              {shade && (
-                <div className="flex items-center gap-2 mb-4">
-                  <div 
-                    className="w-6 h-6 rounded-full border border-gray-300"
-                    style={{ backgroundColor: shade.colorCode }}
-                  />
-                  <span>{shade.name}</span>
-                </div>
-              )}
-              <p className="text-gray-600 mb-4">See how this shade looks on different skin tones</p>
-              
-              <div className="grid grid-cols-3 gap-2">
-                {[1, 2, 3].map((item) => (
-                  <div key={item} className="border rounded-lg p-2">
-                    <div className="bg-gray-100 h-24 mb-2 flex items-center justify-center">
-                      <img 
-                        src={assets[`skin_tone_${item}`]} 
-                        alt={`Skin tone ${item}`} 
-                        className="h-full object-contain"
-                      />
-                    </div>
-                    <p className="text-center text-sm">Skin Tone {item}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <div className="border-t p-4 flex justify-end gap-3">
-          <button 
-            onClick={onClose}
-            className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
-          >
-            Close
-          </button>
-          <button 
-            onClick={() => {
-              toast.success('Added to favorites for try-on');
-              onClose();
-            }}
-            className="px-4 py-2 bg-pink-600 text-white rounded-md hover:bg-pink-700"
-          >
-            Save to Favorites
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
+// Import base images for each model
+import base1 from '../assets/base_1.png';
+import base2 from '../assets/base_2.png';
+import base3 from '../assets/base_3.png';
+
+// Import images from the model folders
+import beige1 from '../assets/model1/beige_1.png';
+import midnight1 from '../assets/model1/midnight_1.png';
+import nude1 from '../assets/model1/nude_1.png';
+import red1 from '../assets/model1/red_1.png';
+
+import beige2 from '../assets/model2/beige_2.png';
+import midnight2 from '../assets/model2/midnight_2.png';
+import nude2 from '../assets/model2/nude_2.png';
+import red2 from '../assets/model2/red_2.png';
+
+import beige3 from '../assets/model3/beige_3.png';
+import midnight3 from '../assets/model3/midnight_3.png';
+import nude3 from '../assets/model3/nude_3.png';
+import red3 from '../assets/model3/red_3.png';
+
+// Import eye shadow images
+import koh1 from '../assets/model1/koh_1.png';
+import laguna1 from '../assets/model1/laguna_1.png';
+import kuala1 from '../assets/model1/kuala_1.png';
+
+import koh2 from '../assets/model2/koh_2.png';
+import laguna2 from '../assets/model2/laguna_2.png';
+import kuala2 from '../assets/model2/kuala_2.png';
+
+import koh3 from '../assets/model3/koh_3.png';
+import laguna3 from '../assets/model3/laguna_3.png';
+import kuala3 from '../assets/model3/kuala_3.png';
 
 const Product = () => {
   const { productId } = useParams();
@@ -120,6 +53,8 @@ const Product = () => {
   const [showTryOnPopup, setShowTryOnPopup] = useState(false);
   const [selectedShade, setSelectedShade] = useState(null);
   const [selectedModel, setSelectedModel] = useState('model1');
+  const [selectedLipColor, setSelectedLipColor] = useState('beige');
+  const [selectedEyeColor, setSelectedEyeColor] = useState('laguna');
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchProductData = async () => {
@@ -200,7 +135,76 @@ const Product = () => {
       quantity
     );
     
-    toast.success(`${quantity} ${productData.name} added to cart`);
+   // toast.success(`${quantity} ${productData.name} added to cart`);
+  };
+
+  const handleModelClick = (model) => {
+    setSelectedModel(model);
+  };
+
+  const handleLipColorClick = (color) => {
+    setSelectedLipColor(color);
+  };
+
+  const handleEyeColorClick = (color) => {
+    setSelectedEyeColor(color);
+  };
+
+  const getLipColorImage = () => {
+    switch (selectedModel) {
+      case 'model1':
+        switch (selectedLipColor) {
+          case 'beige': return beige1;
+          case 'midnight': return midnight1;
+          case 'nude': return nude1;
+          case 'red': return red1;
+          default: return beige1;
+        }
+      case 'model2':
+        switch (selectedLipColor) {
+          case 'beige': return beige2;
+          case 'midnight': return midnight2;
+          case 'nude': return nude2;
+          case 'red': return red2;
+          default: return beige2;
+        }
+      case 'model3':
+        switch (selectedLipColor) {
+          case 'beige': return beige3;
+          case 'midnight': return midnight3;
+          case 'nude': return nude3;
+          case 'red': return red3;
+          default: return beige3;
+        }
+      default: return beige1;
+    }
+  };
+
+  const getEyeColorImage = () => {
+    switch (selectedModel) {
+      case 'model1':
+        switch (selectedEyeColor) {
+          case 'laguna': return laguna1;
+          case 'koh': return koh1;
+          case 'kuala': return kuala1;
+          default: return laguna1;
+        }
+      case 'model2':
+        switch (selectedEyeColor) {
+          case 'laguna': return laguna2;
+          case 'koh': return koh2;
+          case 'kuala': return kuala2;
+          default: return laguna2;
+        }
+      case 'model3':
+        switch (selectedEyeColor) {
+          case 'laguna': return laguna3;
+          case 'koh': return koh3;
+          case 'kuala': return kuala3;
+          default: return laguna3;
+        }
+      default: return laguna1;
+    }
   };
 
   if (isLoading) {
@@ -255,7 +259,7 @@ const Product = () => {
           {/* Main image */}
           <div className="order-1 lg:order-2 w-full lg:flex-1 bg-white p-4 rounded-lg shadow-md">
             <img
-              className="w-full h-auto max-h-[500px] object-contain rounded-lg"
+              className="w-full h-auto max-h-[500px] objec  t-contain rounded-lg"
               src={mainImage}
               alt={productData.name}
               onError={(e) => {
@@ -386,7 +390,7 @@ const Product = () => {
           <div className="mt-6">
             <div className="space-y-3 text-sm text-gray-600">
               <div className="flex gap-2">
-                <span className="font-medium text-gray-800">Brand:</span>
+                <span className="font-medi um text-gray-800">Brand:</span>
                 <span>{productData.brand}</span>
               </div>
               <div className="flex gap-2">
@@ -455,14 +459,82 @@ const Product = () => {
       </div>
 
       {/* Try On Popup */}
-      {showTryOnPopup && productData && (
-        <TryOnPopup
-          product={productData}
-          shade={selectedShade}
-          model={selectedModel}
-          onClose={() => setShowTryOnPopup(false)}
-          onModelChange={setSelectedModel}
-        />
+      {showTryOnPopup && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg text-center max-w-2xl w-full">
+            <h2 className="text-xl font-bold mb-4">Virtual Try-On</h2>
+            <div className="flex gap-4 justify-center">
+              {[
+                { model: 'model1', base: base1 },
+                { model: 'model2', base: base2 },
+                { model: 'model3', base: base3 },
+              ].map((item, index) => (
+                <div key={index} className="flex flex-col items-center">
+                  <span className="text-sm font-medium mb-2">Model {index + 1}</span>
+                  <img
+                    src={item.base}
+                    alt={`Model ${index + 1}`}
+                    className={`w-24 h-24 cursor-pointer border ${
+                      selectedModel === item.model ? 'border-pink-600' : 'border-gray-200'
+                    }`}
+                    onClick={() => handleModelClick(item.model)}
+                  />
+                </div>
+              ))}
+            </div>
+            {productData.category === 'Lips' && (
+              <div className="mt-4">
+                <h3 className="text-lg font-medium mb-2">Select Lip Color</h3>
+                <div className="flex gap-2 justify-center">
+                  {['beige', 'midnight', 'nude', 'red'].map((color, index) => (
+                    <button
+                      key={index}
+                      className={`border py-2 px-4 bg-gray-100 rounded-md hover:bg-gray-200 ${
+                        color === selectedLipColor ? "border-pink-600 font-semibold" : ""
+                      }`}
+                      onClick={() => handleLipColorClick(color)}
+                    >
+                      {color}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {productData.category === 'Eyes' && (
+              <div className="mt-4">
+                <h3 className="text-lg font-medium mb-2">Select Eye Color</h3>
+                <div className="flex gap-2 justify-center">
+                  {['laguna', 'koh', 'kuala'].map((color, index) => (
+                    <button
+                      key={index}
+                      className={`border py-2 px-4 bg-gray-100 rounded-md hover:bg-gray-200 ${
+                        color === selectedEyeColor ? "border-pink-600 font-semibold" : ""
+                      }`}
+                      onClick={() => handleEyeColorClick(color)}
+                    >
+                      {color}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="mt-6">
+              <img
+                src={productData.category === 'Lips' ? getLipColorImage() : getEyeColorImage()}
+                alt="Virtual Try-On"
+                className="w-64 h-64 mx-auto object-contain"
+              />
+            </div>
+            <div className="mt-6">
+              <button 
+                onClick={() => setShowTryOnPopup(false)}
+                className="px-4 py-2 bg-pink-600 text-white rounded-md hover:bg-pink-700"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

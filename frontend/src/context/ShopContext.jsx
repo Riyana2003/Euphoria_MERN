@@ -100,7 +100,7 @@ const ShopContextProvider = (props) => {
         await axios.post(
           `${backendUrl}/api/cart/add`, 
           { itemId, shade: shadeName, quantity }, 
-          { headers: { Authorization: `Bearer ${token}` } }
+          { headers: token }
         );
         toast.success("Item added to cart successfully!");
       } catch (error) {
@@ -139,7 +139,7 @@ const ShopContextProvider = (props) => {
         await axios.post(
           `${backendUrl}/api/cart/update`, 
           { itemId, shade: shadeName, quantity: newQuantity }, 
-          { headers: { Authorization: `Bearer ${token}` } }
+          { headers: token }
         );
       } catch (error) {
         console.error("Error updating cart:", error);
@@ -164,7 +164,7 @@ const ShopContextProvider = (props) => {
         await axios.post(
           `${backendUrl}/api/cart/remove`, 
           { itemId, shade: shadeName }, 
-          { headers: { Authorization: `Bearer ${token}` } }
+          { headers: token }
         );
       } catch (error) {
         console.error("Error removing item from cart:", error);
@@ -179,7 +179,7 @@ const ShopContextProvider = (props) => {
       const response = await axios.post(
         `${backendUrl}/api/cart/get`, 
         { userId: localStorage.getItem("user_id") }, 
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: token}
       );
       
       if (response.data.success) {
