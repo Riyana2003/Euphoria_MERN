@@ -1,20 +1,19 @@
 import Order from "../models/orderModel.js";
 import User from "../models/userModel.js";
 import axios from "axios";
-import { v4 as uuidv4 } from "uuid"; // For generating temporary unique pidx
+import { v4 as uuidv4 } from "uuid";
 
 // Helper function to validate order data
 const validateOrderData = (userId, items, amount, address) => {
   if (!userId || !items || !amount || !address) {
     throw new Error("Missing required fields: userId, items, amount, or address.");
   }
-  if (!Array.isArray(items)) {
-    throw new Error("Items must be an array.");
+  if (!Array.isArray(items) || items.length === 0) {
+    throw new Error("Items must be a non-empty array.");
   }
   if (typeof amount !== "number" || amount <= 0) {
     throw new Error("Amount must be a positive number.");
   }
-  // Validate each item in the items array
   items.forEach((item, index) => {
     if (!item._id) {
       throw new Error(`Product ID is required for item at index ${index}.`);
@@ -33,34 +32,21 @@ const placeOrder = async (req, res) => {
   try {
     const { userId, items, amount, address, paymentMethod } = req.body;
 
-    // Validate order data
     validateOrderData(userId, items, amount, address);
 
-    // Initialize order data
     const orderData = {
       userId,
       items,
       amount,
       address,
       paymentMethod,
-      payment: paymentMethod === "Khalti", // true for Khalti, false for COD
+      payment: paymentMethod === "Khalti",
       status: paymentMethod === "COD" ? "Processing" : "Pending",
       date: Date.now(),
     };
 
-    // Only add pidx for Khalti payments
-    if (paymentMethod === "Khalti") {
-      if (!req.body.pidx) {
-        throw new Error("pidx is required for Khalti payments.");
-      }
-      orderData.pidx = req.body.pidx; // Use the provided pidx
-    }
-
-    // Save the order to the database
     const newOrder = new Order(orderData);
     await newOrder.save();
-
-    // Clear the user's cart after placing the order
     await User.findByIdAndUpdate(userId, { cartData: {} });
 
     res.status(201).json({ 
@@ -82,10 +68,8 @@ const initiateKhaltiPayment = async (req, res) => {
   try {
     const { userId, items, amount, address } = req.body;
 
-    // Validate order data
     validateOrderData(userId, items, amount, address);
 
-    // Create temporary order with a unique pidx
     const tempOrder = new Order({
       userId,
       items,
@@ -94,25 +78,21 @@ const initiateKhaltiPayment = async (req, res) => {
       paymentMethod: "Khalti",
       payment: false,
       status: "Pending",
-      pidx: uuidv4(), // Set a temporary unique pidx
+      pidx: uuidv4(),
     });
 
     const savedOrder = await tempOrder.save();
 
-
-    // Prepare Khalti payload
     const khaltiPayload = {
       return_url: `${process.env.FRONTEND_URL}/payment-success?orderId=${savedOrder._id}&pidx=${savedOrder.pidx}`,
       website_url: process.env.FRONTEND_URL,
-      amount: amount * 100, // Convert to paisa
+      amount: amount * 100,
       purchase_order_id: savedOrder._id,
       purchase_order_name: "Beauty Product Order",
     };
 
-
-    // Initiate payment with Khalti
     const khaltiResponse = await axios.post(
-      "https://dev.khalti.com/api/v2/epayment/initiate/",
+      "https://a.khalti.com/api/v2/epayment/initiate/",
       khaltiPayload,
       {
         headers: {
@@ -122,7 +102,6 @@ const initiateKhaltiPayment = async (req, res) => {
       }
     );
 
-    // Update the order with the actual pidx from Khalti
     savedOrder.pidx = khaltiResponse.data.pidx;
     await savedOrder.save();
 
@@ -139,26 +118,24 @@ const initiateKhaltiPayment = async (req, res) => {
   }
 };
 
-// Verify Khalti Payment
+// Verify payment with Khalti API
 const verifyKhaltiPayment = async (req, res) => {
   try {
-    const { pidx, orderId } = req.body;
+    const { pidx } = req.body;
 
-    // Validate required fields
-    if (!pidx || !orderId) {
+    if (!pidx) {
       return res.status(400).json({
         success: false,
-        message: "Payment ID (pidx) and Order ID are required.",
+        message: "Payment ID (pidx) is required.",
       });
     }
 
-    // Clean the pidx (remove any query parameters)
+    // First clean the pidx in case it has any query parameters
     const cleanPidx = pidx.split('?')[0];
 
-    // Verify payment with Khalti API
     const verificationResponse = await axios.post(
-      "https://dev.khalti.com/api/v2/payment/verify/",
-      { pidx: cleanPidx }, // Use the cleaned pidx
+      "https://a.khalti.com/api/v2/epayment/lookup/",
+      { pidx: cleanPidx },
       {
         headers: {
           Authorization: `Key ${process.env.KHALTI_SECRET_KEY}`,
@@ -169,14 +146,16 @@ const verifyKhaltiPayment = async (req, res) => {
 
     const paymentData = verificationResponse.data;
 
-    // Check if payment is completed
     if (paymentData.status !== "Completed") {
-      throw new Error("Khalti payment failed or is pending.");
+      return res.status(400).json({
+        success: false,
+        message: "Khalti payment failed or is pending.",
+        details: pidx,
+      });
     }
 
-    // Find and update the order
     const order = await Order.findOneAndUpdate(
-      { _id: orderId, pidx: cleanPidx }, // Use the cleaned pidx
+      { pidx: cleanPidx },
       {
         payment: true,
         status: "Processing",
@@ -185,13 +164,15 @@ const verifyKhaltiPayment = async (req, res) => {
     );
 
     if (!order) {
-      throw new Error("Order not found for this payment.");
+      return res.status(404).json({
+        success: false,
+        message: "Order not found for this payment.",
+      });
     }
 
-    // Clear the user's cart
     await User.findByIdAndUpdate(order.userId, { cartData: {} });
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Payment verified successfully.",
       order,
@@ -199,25 +180,21 @@ const verifyKhaltiPayment = async (req, res) => {
   } catch (error) {
     console.error("Error verifying Khalti payment:", error);
 
-    // Handle Axios errors (e.g., 404, 500, etc.)
     if (error.response) {
+      // Handle Khalti API errors
       const { status, data } = error.response;
       return res.status(status).json({
         success: false,
-        message: "Khalti payment verification failed",
-        details: data,
-      });
-    } else if (error.request) {
-      return res.status(500).json({
-        success: false,
-        message: "No response received from Khalti API",
-      });
-    } else {
-      return res.status(500).json({
-        success: false,
-        message: "Error setting up Khalti payment verification request",
+        message: data.detail || "Khalti payment verification failed",
+        errorKey: data.error_key,
+        details: req.body.pidx, // Now properly referenced
       });
     }
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error during payment verification.",
+    });
   }
 };
 

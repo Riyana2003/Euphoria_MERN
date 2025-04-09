@@ -7,12 +7,12 @@ import attachProducts from '../middleware/attachproducts.js'
 const orderRouter = express.Router()
 
 // Admin Features
-orderRouter.post('/list', adminAuth, allOrders)
+orderRouter.get('/list', adminAuth, allOrders)
 orderRouter.post('/status', adminAuth, updateStatus)
 
 // Payment Features
 orderRouter.post('/place', authUser, attachProducts, placeOrder)
-orderRouter.post('/khalti/initiate', authUser, attachProducts,initiateKhaltiPayment)
+orderRouter.post('/khalti/initiate',authUser, attachProducts,initiateKhaltiPayment)
 orderRouter.post('/khalti/verify', authUser, verifyKhaltiPayment)
 
 // User Feature
