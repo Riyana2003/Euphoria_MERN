@@ -179,7 +179,11 @@ const ShopContextProvider = (props) => {
       const response = await axios.post(
         `${backendUrl}/api/cart/get`, 
         { userId: localStorage.getItem("user_id") }, 
-        { headers: token}
+        { 
+          headers: {
+            Authorization: `Bearer ${token}` 
+          }
+        }
       );
       
       if (response.data.success) {
