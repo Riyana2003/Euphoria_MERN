@@ -317,7 +317,7 @@ const Add = () => {
           <button
             type='button'
             onClick={handleAddShade}
-            className='mt-3 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600'
+            className='mt-3 px-4 py-2 bg-pink-500 text-white rounded hover:bg-pink-600'
             disabled={!newShade.name.trim()}
           >
             Add Shade
