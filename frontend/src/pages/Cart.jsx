@@ -4,35 +4,42 @@ import { ShopContext } from "../context/ShopContext";
 import { assets } from "../assets/assets";
 
 const Cart = () => {
-  const { products, currency, cartItems, updateCart, removeFromCart, navigate } = useContext(ShopContext);
+  const { 
+    products, 
+    currency, 
+    cartItems, 
+    updateCart, 
+    removeFromCart, 
+    navigate,
+    getTotalCartAmount,
+    delivery_fee 
+  } = useContext(ShopContext);
+  
   const [cartData, setCartData] = useState([]);
 
   useEffect(() => {
-
-    if (products.length > 0){
+    if (products.length > 0) {
       const tempData = [];
       for (const itemId in cartItems) {
-        for (const shades in cartItems[itemId]) {
-          if (cartItems[itemId][shades] > 0) {
+        for (const shadeName in cartItems[itemId]) {
+          const cartItem = cartItems[itemId][shadeName];
+          if (cartItem.quantity > 0) {
             tempData.push({
-              _id: itemId,  
-              shades: shades,
-              quantity: cartItems[itemId][shades],
+              _id: itemId,
+              shadeName: shadeName,
+              quantity: cartItem.quantity,
+              shadeData: cartItem.shadeData // Include shade data
             });
           }
         }
       }
       setCartData(tempData);
     }
-    }, [cartItems, products]);
+  }, [cartItems, products]);
 
-  const totalAmount = cartData.reduce((acc, item) => {
-    const product = products.find((p) => p._id === item._id);
-    return acc + (product?.price * item.quantity || 0);
-  }, 0);
-
+  const totalAmount = getTotalCartAmount();
   const discount = totalAmount > 100 ? totalAmount * 0.1 : 0;
-  const grandTotal = totalAmount - discount;
+  const grandTotal = totalAmount - discount + delivery_fee;
 
   return (
     <div className="p-8 min-h-screen">
@@ -47,21 +54,33 @@ const Cart = () => {
                 <div key={index} className="flex justify-between items-center border-b pb-4 mb-4">
                   <div className="flex items-center gap-4">
                     <input type="checkbox" className="w-4 h-4" />
-                    <img className="w-16 h-16 object-cover" src={productData?.image[0]} alt={productData?.name} />
+                    <img 
+                      className="w-16 h-16 object-cover" 
+                      src={item.shadeData?.image || productData?.image[0]} 
+                      alt={productData?.name} 
+                    />
                     <div>
                       <p className="text-lg font-medium">{productData?.name}</p>
-                      <p className="text-sm text-gray-500">Shade: {item.shades}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm text-gray-500">Shade: {item.shadeName}</p>
+                        {item.shadeData?.colorCode && (
+                          <div 
+                            className="w-4 h-4 rounded-full border border-gray-300"
+                            style={{ backgroundColor: item.shadeData.colorCode }}
+                          />
+                        )}
+                      </div>
                       <div className="flex items-center gap-3 mt-2">
                         <button
                           className="p-1 bg-gray-200 rounded"
-                          onClick={() => updateCart(item._id, item.shades, Math.max(0, item.quantity - 1))}
+                          onClick={() => updateCart(item._id, item.shadeName, Math.max(1, item.quantity - 1))}
                         >
                           -
                         </button>
                         <span>{item.quantity}</span>
                         <button
                           className="p-1 bg-gray-200 rounded"
-                          onClick={() => updateCart(item._id, item.shades, item.quantity + 1)}
+                          onClick={() => updateCart(item._id, item.shadeName, item.quantity + 1)}
                         >
                           +
                         </button>
@@ -72,7 +91,7 @@ const Cart = () => {
                     <p className="font-semibold">{currency}{(productData?.price * item.quantity).toFixed(2)}</p>
                     <button 
                       className="text-red-500 mt-2"
-                      onClick={() => removeFromCart(item._id, item.shades)}
+                      onClick={() => removeFromCart(item._id, item.shadeName)}
                     >
                       <img src={assets.trash} alt="Remove" className="w-5 h-5" />
                     </button>
@@ -88,24 +107,37 @@ const Cart = () => {
         </div>
 
         {/* Order Summary Section */}
-        <div className="bg-white p-6 rounded-lg shadow-md">
+        <div className="bg-white p-6 rounded-lg shadow-md h-fit sticky top-4">
           <h3 className="text-lg font-bold mb-4">Order Summary</h3>
-          <div className="flex justify-between text-gray-700 mb-2">
-            <span>Total</span>
-            <span>{currency}{totalAmount.toFixed(2)}</span>
+          <div className="space-y-3 mb-4">
+            <div className="flex justify-between">
+              <span>Subtotal</span>
+              <span>{currency}{totalAmount.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-green-600">
+              <span>Discount (10%)</span>
+              <span>- {currency}{discount.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Delivery Fee</span>
+              <span>{currency}{delivery_fee.toFixed(2)}</span>
+            </div>
           </div>
-          <div className="flex justify-between text-gray-700 mb-2">
-            <span>Discount</span>
-            <span>- {currency}{discount.toFixed(2)}</span>
+          <div className="border-t pt-3 mb-4">
+            <div className="flex justify-between font-semibold text-lg">
+              <span>Grand Total</span>
+              <span>{currency}{grandTotal.toFixed(2)}</span>
+            </div>
           </div>
-          <p className="bg-gray-200 p-2 text-sm text-gray-600 rounded-md mb-4">
-            Delivery charge may vary depending on the shipping address of your order.
-          </p>
-          <div className="flex justify-between font-semibold text-lg mb-4">
-            <span>Grand Total</span>
-            <span>{currency}{grandTotal.toFixed(2)}</span>
-          </div>
-          <button onClick={()=>navigate('/place-order')}className="w-full bg-pink-500 hover:bg-pink-600 text-white py-2 rounded-lg text-center font-semibold">
+          <button 
+            onClick={() => navigate('/place-order')}
+            className={`w-full py-3 rounded-lg text-center font-semibold ${
+              cartData.length > 0 
+                ? 'bg-pink-500 hover:bg-pink-600 text-white'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
+            disabled={cartData.length === 0}
+          >
             PROCEED TO CHECKOUT
           </button>
         </div>

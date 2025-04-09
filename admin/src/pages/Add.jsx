@@ -9,49 +9,130 @@ import 'react-toastify/dist/ReactToastify.css';
 const Add = () => {
   const token = localStorage.getItem('token');  
 
-  const [image1, setImage1] = useState(null);
-  const [image2, setImage2] = useState(null);
-  const [image3, setImage3] = useState(null);
-  const [image4, setImage4] = useState(null);
+  // Main product images
+  const [mainImages, setMainImages] = useState([null, null, null, null]);
+  
+  // Product details
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
   const [brand, setBrand] = useState('');
   const [bestseller, setBestSeller] = useState(false);
+  
+  // Shades management
   const [shades, setShades] = useState([]);
+  const [newShade, setNewShade] = useState({
+    name: '',
+    colorCode: '#ffffff',
+    images: [null, null, null, null]
+  });
 
-  const handleShadeToggle = (shade) => {
-    setShades((prev) =>
-      prev.includes(shade) ? prev.filter((item) => item !== shade) : [...prev, shade]
-    );
+  const handleAddShade = () => {
+    if (!newShade.name.trim()) {
+      toast.warning('Please enter a shade name');
+      return;
+    }
+    
+    if (!newShade.images.some(img => img !== null)) {
+      toast.warning('Please upload at least one image for the shade');
+      return;
+    }
+    
+    setShades([...shades, {
+      name: newShade.name,
+      colorCode: newShade.colorCode,
+      images: newShade.images.filter(img => img !== null)
+    }]);
+    
+    setNewShade({
+      name: '',
+      colorCode: '#ffffff',
+      images: [null, null, null, null]
+    });
+  };
+
+  const handleRemoveShade = (index) => {
+    const updatedShades = [...shades];
+    updatedShades.splice(index, 1);
+    setShades(updatedShades);
+  };
+
+  const handleShadeImageChange = (imageIndex, e) => {
+    const updatedImages = [...newShade.images];
+    updatedImages[imageIndex] = e.target.files[0];
+    setNewShade({...newShade, images: updatedImages});
+  };
+
+  const handleMainImageChange = (imageIndex, e) => {
+    const updatedImages = [...mainImages];
+    updatedImages[imageIndex] = e.target.files[0];
+    setMainImages(updatedImages);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!mainImages.some(img => img !== null)) {
+      toast.error('Please upload at least one main product image');
+      return;
+    }
+
+    if (shades.length === 0) {
+      toast.error('Please add at least one shade variation');
+      return;
+    }
+
+    const shadeWithNoImages = shades.find(shade => shade.images.length === 0);
+    if (shadeWithNoImages) {
+      toast.error(`Shade "${shadeWithNoImages.name}" has no images`);
+      return;
+    }
+
     try {
       const formData = new FormData();
+      
+      // Add product details
       formData.append('name', name);
       formData.append('description', description);
       formData.append('price', price);
       formData.append('category', category);
       formData.append('brand', brand);
       formData.append('bestseller', bestseller);
-      formData.append('shades', JSON.stringify(shades));
+      
+      // Add main product images
+      mainImages.forEach((img, index) => {
+        if (img) formData.append(`image${index + 1}`, img);
+      });
 
-      // Append images with unique keys
-      image1 && formData.append('image1', image1);
-      image2 && formData.append('image2', image2);
-      image3 && formData.append('image3', image3);
-      image4 && formData.append('image4', image4);
+      // Add shade names
+      const shadeNames = shades.map(shade => shade.name);
+      formData.append('shadeNames', JSON.stringify(shadeNames));
+
+      // Add shade images with proper field names (shade0_image1, shade1_image1, etc.)
+      shades.forEach((shade, shadeIndex) => {
+        shade.images.forEach((image, imageIndex) => {
+          if (image) {
+            formData.append(`shade${shadeIndex}_image${imageIndex + 1}`, image);
+          }
+        });
+      });
+
+      // Add color codes for each shade
+      shades.forEach((shade, shadeIndex) => {
+        formData.append(`shadeColor${shadeIndex}`, shade.colorCode);
+      });
 
       const response = await axios.post(`${backendUrl}/api/product/add`, formData, {
-        headers: { token },
+        headers: { 
+          'Content-Type': 'multipart/form-data',
+          'token': token
+        },
       });
 
       if (response.data.success) {
         toast.success('Product added successfully!');
-        // Reset form after successful submission
+        // Reset form
         setName('');
         setPrice('');
         setDescription('');
@@ -59,106 +140,258 @@ const Add = () => {
         setBrand('');
         setBestSeller(false);
         setShades([]);
-        setImage1(null);
-        setImage2(null);
-        setImage3(null);
-        setImage4(null);
+        setMainImages([null, null, null, null]);
       } else {
-        toast.error(response.data.message || 'Failed to add product. Please try again.');
+        toast.error(response.data.message || 'Failed to add product');
       }
     } catch (error) {
       console.error('Error adding product:', error);
-      toast.error('An error occurred. Please try again.');
+      if (error.response) {
+        console.error('Server response:', error.response.data);
+        toast.error(error.response.data.message || 'An error occurred. Please try again.');
+      } else {
+        toast.error('Network error. Please check your connection.');
+      }
     }
   };
 
   return (
-    <form className='flex flex-col w-full items-start gap-3' onSubmit={handleSubmit}>
-      <div>
-        <p className='mb-2'>Upload Image</p>
-        <div className='flex gap-2'>
-          <label htmlFor='image1'>
-            <img className='w-20' src={!image1 ? assets.upload_area : URL.createObjectURL(image1)} alt='' />
-            <input onChange={(e) => setImage1(e.target.files[0])} type='file' id='image1' hidden />
-          </label>
-          <label htmlFor='image2'>
-            <img className='w-20' src={!image2 ? assets.upload_area : URL.createObjectURL(image2)} alt='' />
-            <input onChange={(e) => setImage2(e.target.files[0])} type='file' id='image2' hidden />
-          </label>
-          <label htmlFor='image3'>
-            <img className='w-20' src={!image3 ? assets.upload_area : URL.createObjectURL(image3)} alt='' />
-            <input onChange={(e) => setImage3(e.target.files[0])} type='file' id='image3' hidden />
-          </label>
-          <label htmlFor='image4'>
-            <img className='w-20' src={!image4 ? assets.upload_area : URL.createObjectURL(image4)} alt='' />
-            <input onChange={(e) => setImage4(e.target.files[0])} type='file' id='image4' hidden />
-          </label>
+    <form className='flex flex-col w-full items-start gap-4 p-4 max-w-4xl mx-auto' onSubmit={handleSubmit}>
+      <h1 className='text-2xl font-bold mb-2'>Add New Product</h1>
+      
+      {/* Main Product Images */}
+      <div className='w-full'>
+        <p className='mb-2 font-medium'>Main Product Images (1-4 images)</p>
+        <div className='flex gap-4'>
+          {[0, 1, 2, 3].map((index) => (
+            <label key={index} className='flex flex-col items-center'>
+              <img 
+                className='w-24 h-24 object-cover border rounded-md'
+                src={mainImages[index] ? URL.createObjectURL(mainImages[index]) : assets.upload_area} 
+                alt={`Main preview ${index+1}`}
+              />
+              <input 
+                onChange={(e) => handleMainImageChange(index, e)}
+                type='file' 
+                className='hidden' 
+                accept='image/*'
+              />
+              <span className='text-xs mt-1'>Image {index+1}</span>
+            </label>
+          ))}
         </div>
       </div>
-      <div className='w-full'>
-        <p className='mb-2'>Product name</p>
-        <input onChange={(e) => setName(e.target.value)} value={name} className='w-full max-w-[500px] px-3 py-2' type='text' placeholder='Type Here' required />
-      </div>
-      <div className='w-full'>
-        <p className='mb-2'>Product Description</p>
-        <textarea onChange={(e) => setDescription(e.target.value)} value={description} className='w-full max-w-[500px] px-3 py-2' placeholder='Write content here' required />
-      </div>
-      <div className='flex flex-col sm:flex-row gap-2 w-full sm:gap-8'>
+
+      {/* Product Details */}
+      <div className='grid grid-cols-1 md:grid-cols-2 gap-4 w-full'>
         <div>
-          <p className='mb-2'>Brand</p>
-          <select onChange={(e) => setBrand(e.target.value)} className='w-full px-3 py-2'>
+          <label className='block mb-1 font-medium'>Product Name</label>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className='w-full px-3 py-2 border rounded'
+            placeholder='Enter product name'
+            required
+          />
+        </div>
+        
+        <div>
+          <label className='block mb-1 font-medium'>Price</label>
+          <input
+            type='number'
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            className='w-full px-3 py-2 border rounded'
+            placeholder='Enter price'
+            required
+          />
+        </div>
+        
+        <div className='md:col-span-2'>
+          <label className='block mb-1 font-medium'>Description</label>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            className='w-full px-3 py-2 border rounded'
+            rows={3}
+            placeholder='Enter product description'
+            required
+          />
+        </div>
+        
+        <div>
+          <label className='block mb-1 font-medium'>Brand</label>
+          <select
+            value={brand}
+            onChange={(e) => setBrand(e.target.value)}
+            className='w-full px-3 py-2 border rounded'
+            required
+          >
+            <option value=''>Select Brand</option>
             <option value='Dior'>DIOR</option>
             <option value='Estee Lauder'>ESTEE LAUDER</option>
             <option value='Armani Beauty'>ARMANI BEAUTY</option>
-            <option value='Bobbi Brown'>BOBBI BROWN</option>
-            <option value='Chanel'>CHANEL</option>
-            <option value='Charlotee Tilbury'>CHARLOTEE TILBURY</option>
-            <option value='Fenty Beauty'>FENTY BEAUTY</option>
-            <option value='Hermes Beauty'>HERMES BEAUTY</option>
-            <option value='Huda Beauty'>HUDA BEAUTY</option>
-            <option value='Lancome'>LANCOME</option>
-            <option value='Pat McGrath Labs'>PAT MCGRATH LABS</option>
-            <option value='Rare Beauty'>RARE BEAUTY</option>
-            <option value='Tomford Beauty'>TOMFORD BEAUTY</option>
-            <option value='Valentino Beauty'>VALENTINO BEAUTY</option>
-            <option value='Westman Atelier'>WESTMAN ATELIER</option>
-            <option value='YSL Beauty'>YSL BEAUTY</option>
           </select>
         </div>
+        
         <div>
-          <p className='mb-2'>Product Category</p>
-          <select onChange={(e) => setCategory(e.target.value)} className='w-full px-3 py-2'>
+          <label className='block mb-1 font-medium'>Category</label>
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className='w-full px-3 py-2 border rounded'
+            required
+          >
+            <option value=''>Select Category</option>
             <option value='Face'>FACE</option>
             <option value='Eyes'>EYES</option>
             <option value='Lips'>LIPS</option>
             <option value='Tools'>TOOLS & MAKEUP SETS</option>
           </select>
         </div>
-        <div>
-          <p className='mb-2'>Product Price</p>
-          <input onChange={(e) => setPrice(e.target.value)} value={price} className='w-full px-3 py-2 sm:w-[120px]' type='number' placeholder='100' />
-        </div>
-      </div>
-      <div>
-        <p>Product Shades</p>
-        <div className='flex gap-3'>
-          <div onClick={() => handleShadeToggle('Beige')}>
-            <p className={`${shades.includes('Beige') ? 'bg-pink-500' : 'bg-slate-200'} px-3 py-1 cursor-pointer`}>Beige</p>
-          </div>
-          <div onClick={() => handleShadeToggle('Nude')}>
-            <p className={`${shades.includes('Nude') ? 'bg-pink-500' : 'bg-slate-200'} px-3 py-1 cursor-pointer`}>Nude</p>
-          </div>
-          <div onClick={() => handleShadeToggle('Midnight')}>
-            <p className={`${shades.includes('Midnight') ? 'bg-pink-500' : 'bg-slate-200'} px-3 py-1 cursor-pointer`}>Midnight</p>
-          </div>
-        </div>
-      </div>
-      <div className='flex gap-2 mt-2'>
-        <input type='checkbox' id='bestseller' checked={bestseller} onChange={(e) => setBestSeller(e.target.checked)} />
-        <label className='cursor-pointer' htmlFor='bestseller'>Add to bestseller</label>
       </div>
 
-      <button type='submit' className='w-28 py-3 mt-4 bg-pink-500 text-white'>ADD</button>
+      {/* Shade Management */}
+      <div className='w-full border-t pt-4 mt-4'>
+        <h2 className='text-xl font-bold mb-4'>Shade Variations</h2>
+        
+        {/* Add New Shade Form */}
+        <div className='bg-gray-50 p-4 rounded-lg mb-4'>
+          <h3 className='font-medium mb-3'>Add New Shade</h3>
+          <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
+            <div>
+              <label className='block mb-1 text-sm'>Shade Name</label>
+              <input
+                value={newShade.name}
+                onChange={(e) => setNewShade({...newShade, name: e.target.value})}
+                className='w-full px-3 py-2 border rounded'
+                placeholder='e.g., Ruby Red'
+                required
+              />
+            </div>
+            
+            <div>
+              <label className='block mb-1 text-sm'>Color Code</label>
+              <div className='flex items-center gap-2'>
+                <input
+                  type='color'
+                  value={newShade.colorCode}
+                  onChange={(e) => setNewShade({...newShade, colorCode: e.target.value})}
+                  className='h-10 w-10 cursor-pointer'
+                />
+                <input
+                  type='text'
+                  value={newShade.colorCode}
+                  onChange={(e) => setNewShade({...newShade, colorCode: e.target.value})}
+                  className='flex-1 px-3 py-2 border rounded'
+                  maxLength={7}
+                  required
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Shade Images */}
+          <div className='mt-4'>
+            <label className='block mb-2 text-sm font-medium'>Shade Images (1-4 images)</label>
+            <div className='flex gap-4'>
+              {[0, 1, 2, 3].map((index) => (
+                <label key={index} className='flex flex-col items-center'>
+                  <img 
+                    className='w-20 h-20 object-cover border rounded-md'
+                    src={newShade.images[index] ? URL.createObjectURL(newShade.images[index]) : assets.upload_area} 
+                    alt={`Shade preview ${index+1}`}
+                  />
+                  <input 
+                    onChange={(e) => handleShadeImageChange(index, e)}
+                    type='file' 
+                    className='hidden' 
+                    accept='image/*'
+                  />
+                  <span className='text-xs mt-1'>Image {index+1}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+          
+          <button
+            type='button'
+            onClick={handleAddShade}
+            className='mt-3 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600'
+            disabled={!newShade.name.trim()}
+          >
+            Add Shade
+          </button>
+        </div>
+        
+        {/* Existing Shades List */}
+        {shades.length > 0 && (
+          <div className='border rounded-lg overflow-hidden'>
+            <div className='grid grid-cols-12 bg-gray-100 p-2 font-medium text-sm'>
+              <div className='col-span-3'>Shade Name</div>
+              <div className='col-span-2'>Color</div>
+              <div className='col-span-5'>Images</div>
+              <div className='col-span-2'>Action</div>
+            </div>
+            
+            {shades.map((shade, index) => (
+              <div key={index} className='grid grid-cols-12 items-center p-2 border-b hover:bg-gray-50'>
+                <div className='col-span-3 font-medium'>{shade.name}</div>
+                <div className='col-span-2 flex items-center gap-2'>
+                  <div 
+                    className='w-6 h-6 rounded-full border' 
+                    style={{backgroundColor: shade.colorCode}}
+                  />
+                </div>
+                <div className='col-span-5 flex gap-2'>
+                  {shade.images.map((image, imgIndex) => (
+                    image && (
+                      <img 
+                        key={imgIndex}
+                        src={URL.createObjectURL(image)} 
+                        alt={`${shade.name} ${imgIndex+1}`} 
+                        className='w-10 h-10 object-cover rounded'
+                      />
+                    )
+                  ))}
+                </div>
+                <div className='col-span-2'>
+                  <button
+                    type='button'
+                    onClick={() => handleRemoveShade(index)}
+                    className='text-red-500 hover:text-red-700 text-sm'
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Bestseller Option */}
+      <div className='flex items-center gap-2 mt-4'>
+        <input
+          type='checkbox'
+          id='bestseller'
+          checked={bestseller}
+          onChange={(e) => setBestSeller(e.target.checked)}
+          className='w-4 h-4'
+        />
+        <label htmlFor='bestseller' className='font-medium'>
+          Mark as Bestseller
+        </label>
+      </div>
+
+      {/* Submit Button */}
+      <button
+        type='submit'
+        className='mt-6 px-6 py-3 bg-pink-500 text-white rounded-lg hover:bg-pink-600 font-medium'
+        disabled={!name || !price || !description || !category || !brand || shades.length === 0}
+      >
+        Add Product
+      </button>
     </form>
   );
 };

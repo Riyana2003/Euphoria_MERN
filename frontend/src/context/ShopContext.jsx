@@ -1,14 +1,12 @@
 /* eslint-disable react-hooks/exhaustive-deps */
-/* eslint-disable react-refresh/only-export-components */
 /* eslint-disable react/prop-types */
-
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
-// Create the ShopContext
 export const ShopContext = createContext();
 
 const ShopContextProvider = (props) => {
@@ -23,23 +21,18 @@ const ShopContextProvider = (props) => {
   const [notifications, setNotifications] = useState([]);
   const navigate = useNavigate();
 
-  // Persist token and username in localStorage
   useEffect(() => {
     localStorage.setItem("authToken", token || "");
     localStorage.setItem("username", username || "");
-
   }, [token, username]);
 
-  // Fetch products on mount
   useEffect(() => {
     getProductsData();
   }, []);
 
-  // Fetch products from the backend
   const getProductsData = async () => {
     try {
       const response = await axios.get(`${backendUrl}/api/product/list`);
-      console.log("Fetched Products:", response.data);
       setProducts(Array.isArray(response.data.products) ? response.data.products : []);
     } catch (error) {
       console.error("Error fetching products:", error);
@@ -47,23 +40,68 @@ const ShopContextProvider = (props) => {
     }
   };
 
-  // Add item to cart
-  const addToCart = async (itemId, shades, quantity) => {
-    if (!shades || !quantity) {
-      toast.error("Select your shade and quantity");
+  // Helper to find product by ID
+  const findProductById = (itemId) => {
+    return products.find(product => product._id === itemId);
+  };
+
+  // Helper to validate shade exists for product
+  const validateShade = (itemId, shadeName) => {
+    const product = findProductById(itemId);
+    if (!product) {
+      toast.error("Product not found");
+      return false;
+    }
+    
+    const shadeExists = product.shades.some(shade => shade.name === shadeName);
+    if (!shadeExists) {
+      toast.error("Selected shade is not available for this product");
+      return false;
+    }
+    
+    return true;
+  };
+
+  // Enhanced addToCart with shade validation
+  const addToCart = async (itemId, shadeName, quantity) => {
+    if (!shadeName) {
+      toast.error("Please select a shade");
       return;
     }
+
+    if (!quantity || quantity <= 0) {
+      toast.error("Please select a valid quantity");
+      return;
+    }
+
+    if (!validateShade(itemId, shadeName)) {
+      return;
+    }
+
+    // Get complete shade info
+    const product = findProductById(itemId);
+    const shadeInfo = product.shades.find(shade => shade.name === shadeName);
 
     let cartData = { ...cartItems };
     if (!cartData[itemId]) {
       cartData[itemId] = {};
     }
-    cartData[itemId][shades] = (cartData[itemId][shades] || 0) + quantity;
+    
+    // Store shade info along with quantity
+    cartData[itemId][shadeName] = {
+      quantity: (cartData[itemId][shadeName]?.quantity || 0) + quantity,
+      shadeData: shadeInfo // Store complete shade info
+    };
+    
     setCartItems(cartData);
 
     if (token) {
       try {
-        await axios.post(`${backendUrl}/api/cart/add`, { itemId, shades, quantity }, { headers: { Authorization: `Bearer ${token}` } });
+        await axios.post(
+          `${backendUrl}/api/cart/add`, 
+          { itemId, shade: shadeName, quantity }, 
+          { headers: token }
+        );
         toast.success("Item added to cart successfully!");
       } catch (error) {
         console.error("Error adding item to cart:", error);
@@ -72,33 +110,47 @@ const ShopContextProvider = (props) => {
     }
   };
 
-  // Update cart item quantity
-  const updateCart = async (itemId, shades, newQuantity) => {
+  // Enhanced updateCart with shade validation
+  const updateCart = async (itemId, shadeName, newQuantity) => {
     if (newQuantity <= 0) {
-      removeFromCart(itemId, shades);
-    } else {
-      let cartData = { ...cartItems };
-      if (!cartData[itemId]) {
-        cartData[itemId] = {};
-      }
-      cartData[itemId][shades] = newQuantity;
-      setCartItems(cartData);
+      removeFromCart(itemId, shadeName);
+      return;
+    }
 
-      if (token) {
-        try {
-          await axios.post(`${backendUrl}/api/cart/update`, { itemId, shades, quantity: newQuantity }, { headers: { Authorization: `Bearer ${token}` } });
-        } catch (error) {
-          console.error("Error updating cart:", error);
-        }
+    if (!validateShade(itemId, shadeName)) {
+      return;
+    }
+
+    let cartData = { ...cartItems };
+    if (!cartData[itemId]) {
+      cartData[itemId] = {};
+    }
+    
+    // Preserve shade data when updating quantity
+    cartData[itemId][shadeName] = {
+      quantity: newQuantity,
+      shadeData: cartData[itemId][shadeName]?.shadeData || findProductById(itemId)?.shades.find(s => s.name === shadeName)
+    };
+    
+    setCartItems(cartData);
+
+    if (token) {
+      try {
+        await axios.post(
+          `${backendUrl}/api/cart/update`, 
+          { itemId, shade: shadeName, quantity: newQuantity }, 
+          { headers: token }
+        );
+      } catch (error) {
+        console.error("Error updating cart:", error);
       }
     }
   };
 
-  // Remove item from cart
-  const removeFromCart = async (itemId, shades) => {
+  const removeFromCart = async (itemId, shadeName) => {
     let cartData = { ...cartItems };
-    if (cartData[itemId] && cartData[itemId][shades]) {
-      delete cartData[itemId][shades];
+    if (cartData[itemId] && cartData[itemId][shadeName]) {
+      delete cartData[itemId][shadeName];
       if (Object.keys(cartData[itemId]).length === 0) {
         delete cartData[itemId];
       }
@@ -109,21 +161,44 @@ const ShopContextProvider = (props) => {
 
     if (token) {
       try {
-        await axios.post(`${backendUrl}/api/cart/remove`, { itemId, shades }, { headers: { Authorization: `Bearer ${token}` } });
+        await axios.post(
+          `${backendUrl}/api/cart/remove`, 
+          { itemId, shade: shadeName }, 
+          { headers: token }
+        );
       } catch (error) {
         console.error("Error removing item from cart:", error);
       }
     }
   };
 
-  // Fetch user cart from the backend
   const getUserCart = async () => {
     if (!token) return;
 
     try {
-      const response = await axios.post(`${backendUrl}/api/cart/get`, { userId: localStorage.getItem("user_id") }, { headers: { Authorization: `Bearer ${token}` } });
+      const response = await axios.post(
+        `${backendUrl}/api/cart/get`, 
+        { userId: localStorage.getItem("user_id") }, 
+        { headers: token}
+      );
+      
       if (response.data.success) {
-        setCartItems(response.data.cartData || {});
+        // Enhance cart items with shade data if missing
+        const enhancedCart = {};
+        for (const [itemId, shades] of Object.entries(response.data.cartData || {})) {
+          enhancedCart[itemId] = {};
+          const product = findProductById(itemId);
+          
+          for (const [shadeName, quantity] of Object.entries(shades)) {
+            const shadeData = product?.shades.find(s => s.name === shadeName);
+            enhancedCart[itemId][shadeName] = {
+              quantity,
+              shadeData: shadeData || { name: shadeName } // Fallback if shade not found
+            };
+          }
+        }
+        
+        setCartItems(enhancedCart);
       } else {
         console.error("Failed to fetch cart:", response.data.message);
         setCartItems({});
@@ -140,14 +215,26 @@ const ShopContextProvider = (props) => {
     }
   }, [token]);
 
-  // Get total count of items in the cart
   const getCartCount = () => {
     return Object.values(cartItems).reduce((totalCount, shades) => {
-      return totalCount + Object.values(shades).reduce((sum, qty) => sum + qty, 0);
+      return totalCount + Object.values(shades).reduce((sum, item) => sum + (item.quantity || 0), 0);
     }, 0);
   };
 
-  // Provide context values to children
+  // Get total cart amount
+  const getTotalCartAmount = () => {
+    return Object.entries(cartItems).reduce((total, [itemId, shades]) => {
+      const product = findProductById(itemId);
+      if (!product) return total;
+      
+      const itemTotal = Object.values(shades).reduce((sum, item) => {
+        return sum + (product.price * (item.quantity || 0));
+      }, 0);
+      
+      return total + itemTotal;
+    }, 0);
+  };
+
   const value = {
     products,
     currency,
@@ -162,12 +249,14 @@ const ShopContextProvider = (props) => {
     setNotifications,
     removeFromCart,
     getCartCount,
+    getTotalCartAmount,
     navigate,
     backendUrl,
     token,
     setToken,
     username,
     setUsername,
+    findProductById, // Expose this for components to use
   };
 
   return <ShopContext.Provider value={value}>{props.children}</ShopContext.Provider>;
