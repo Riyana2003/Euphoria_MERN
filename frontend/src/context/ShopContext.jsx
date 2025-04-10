@@ -1,11 +1,12 @@
-/* eslint-disable react-hooks/exhaustive-deps */
-/* eslint-disable react/prop-types */
 /* eslint-disable react-refresh/only-export-components */
+/* eslint-disable react/prop-types */
+/* eslint-disable react-hooks/exhaustive-deps */
 import { createContext, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+
 
 export const ShopContext = createContext();
 
@@ -16,19 +17,33 @@ const ShopContextProvider = (props) => {
   const backendUrl = import.meta.env.VITE_BACKEND_URL;
   const [products, setProducts] = useState([]);
   const [token, setToken] = useState(() => localStorage.getItem("authToken") || "");
-  const [cartItems, setCartItems] = useState({});
+  const [cartItems, setCartItems] = useState(() => {
+    // Initialize with local storage cart if exists
+    const localCart = localStorage.getItem("cart");
+    return localCart ? JSON.parse(localCart) : {};
+  });
   const [username, setUsername] = useState(() => localStorage.getItem("username") || "");
   const [notifications, setNotifications] = useState([]);
   const navigate = useNavigate();
 
+  // Persist auth data to localStorage
   useEffect(() => {
-    localStorage.setItem("authToken", token || "");
-    localStorage.setItem("username", username || "");
+    localStorage.setItem("authToken", token);
+    localStorage.setItem("username", username);
   }, [token, username]);
 
+  // Persist cart to localStorage
+  useEffect(() => {
+    localStorage.setItem("cart", JSON.stringify(cartItems));
+  }, [cartItems]);
+
+  // Fetch products and user cart on mount
   useEffect(() => {
     getProductsData();
-  }, []);
+    if (token) {
+      getUserCart();
+    }
+  }, [token]);
 
   const getProductsData = async () => {
     try {
@@ -40,12 +55,10 @@ const ShopContextProvider = (props) => {
     }
   };
 
-  // Helper to find product by ID
   const findProductById = (itemId) => {
     return products.find(product => product._id === itemId);
   };
 
-  // Helper to validate shade exists for product
   const validateShade = (itemId, shadeName) => {
     const product = findProductById(itemId);
     if (!product) {
@@ -53,7 +66,7 @@ const ShopContextProvider = (props) => {
       return false;
     }
     
-    const shadeExists = product.shades.some(shade => shade.name === shadeName);
+    const shadeExists = product.shades?.some(shade => shade.name === shadeName);
     if (!shadeExists) {
       toast.error("Selected shade is not available for this product");
       return false;
@@ -62,7 +75,6 @@ const ShopContextProvider = (props) => {
     return true;
   };
 
-  // Enhanced addToCart with shade validation
   const addToCart = async (itemId, shadeName, quantity) => {
     if (!shadeName) {
       toast.error("Please select a shade");
@@ -78,29 +90,31 @@ const ShopContextProvider = (props) => {
       return;
     }
 
-    // Get complete shade info
     const product = findProductById(itemId);
     const shadeInfo = product.shades.find(shade => shade.name === shadeName);
 
-    let cartData = { ...cartItems };
-    if (!cartData[itemId]) {
-      cartData[itemId] = {};
-    }
-    
-    // Store shade info along with quantity
-    cartData[itemId][shadeName] = {
-      quantity: (cartData[itemId][shadeName]?.quantity || 0) + quantity,
-      shadeData: shadeInfo // Store complete shade info
-    };
-    
-    setCartItems(cartData);
+    setCartItems(prev => {
+      const newCart = { ...prev };
+      if (!newCart[itemId]) newCart[itemId] = {};
+      
+      newCart[itemId][shadeName] = {
+        quantity: (newCart[itemId][shadeName]?.quantity || 0) + quantity,
+        shadeData: shadeInfo
+      };
+      
+      return newCart;
+    });
 
     if (token) {
       try {
         await axios.post(
           `${backendUrl}/api/cart/add`, 
           { itemId, shade: shadeName, quantity }, 
-          { headers: token }
+          {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          }
         );
         toast.success("Item added to cart successfully!");
       } catch (error) {
@@ -110,7 +124,6 @@ const ShopContextProvider = (props) => {
     }
   };
 
-  // Enhanced updateCart with shade validation
   const updateCart = async (itemId, shadeName, newQuantity) => {
     if (newQuantity <= 0) {
       removeFromCart(itemId, shadeName);
@@ -121,51 +134,61 @@ const ShopContextProvider = (props) => {
       return;
     }
 
-    let cartData = { ...cartItems };
-    if (!cartData[itemId]) {
-      cartData[itemId] = {};
-    }
-    
-    // Preserve shade data when updating quantity
-    cartData[itemId][shadeName] = {
-      quantity: newQuantity,
-      shadeData: cartData[itemId][shadeName]?.shadeData || findProductById(itemId)?.shades.find(s => s.name === shadeName)
-    };
-    
-    setCartItems(cartData);
+    setCartItems(prev => {
+      const newCart = { ...prev };
+      if (!newCart[itemId]) newCart[itemId] = {};
+      
+      const product = findProductById(itemId);
+      const shadeData = product?.shades.find(s => s.name === shadeName);
+      
+      newCart[itemId][shadeName] = {
+        quantity: newQuantity,
+        shadeData: shadeData || newCart[itemId][shadeName]?.shadeData
+      };
+      
+      return newCart;
+    });
 
     if (token) {
       try {
-        await axios.post(
+        await axios.put(
           `${backendUrl}/api/cart/update`, 
           { itemId, shade: shadeName, quantity: newQuantity }, 
-          { headers: token }
+          {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          }
         );
       } catch (error) {
         console.error("Error updating cart:", error);
+        toast.error("Failed to update cart");
       }
     }
   };
 
   const removeFromCart = async (itemId, shadeName) => {
-    let cartData = { ...cartItems };
-    if (cartData[itemId] && cartData[itemId][shadeName]) {
-      delete cartData[itemId][shadeName];
-      if (Object.keys(cartData[itemId]).length === 0) {
-        delete cartData[itemId];
+    setCartItems(prev => {
+      const newCart = { ...prev };
+      if (newCart[itemId]?.[shadeName]) {
+        delete newCart[itemId][shadeName];
+        if (Object.keys(newCart[itemId]).length === 0) {
+          delete newCart[itemId];
+        }
       }
-    }
+      return newCart;
+    });
 
-    setCartItems(cartData);
     toast.success("Item removed from cart");
 
     if (token) {
       try {
-        await axios.post(
-          `${backendUrl}/api/cart/remove`, 
-          { itemId, shade: shadeName }, 
-          { headers: token }
-        );
+        await axios.delete(`${backendUrl}/api/cart/remove`, {
+          data: { itemId, shade: shadeName },
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
       } catch (error) {
         console.error("Error removing item from cart:", error);
       }
@@ -173,51 +196,34 @@ const ShopContextProvider = (props) => {
   };
 
   const getUserCart = async () => {
-    if (!token) return;
-
     try {
-      const response = await axios.post(
-        `${backendUrl}/api/cart/get`, 
-        { userId: localStorage.getItem("user_id") }, 
-        { 
-          headers: {
-            Authorization: `Bearer ${token}` 
-          }
+      const response = await axios.get(`${backendUrl}/api/cart`, {
+        headers: {
+          Authorization: `Bearer ${token}`
         }
-      );
+      });
       
       if (response.data.success) {
-        // Enhance cart items with shade data if missing
         const enhancedCart = {};
         for (const [itemId, shades] of Object.entries(response.data.cartData || {})) {
           enhancedCart[itemId] = {};
           const product = findProductById(itemId);
           
-          for (const [shadeName, quantity] of Object.entries(shades)) {
+          for (const [shadeName, itemData] of Object.entries(shades)) {
             const shadeData = product?.shades.find(s => s.name === shadeName);
             enhancedCart[itemId][shadeName] = {
-              quantity,
-              shadeData: shadeData || { name: shadeName } // Fallback if shade not found
+              quantity: itemData.quantity,
+              shadeData: shadeData || { name: shadeName }
             };
           }
         }
         
         setCartItems(enhancedCart);
-      } else {
-        console.error("Failed to fetch cart:", response.data.message);
-        setCartItems({});
       }
     } catch (error) {
       console.error("Error fetching user cart:", error);
-      setCartItems({});
     }
   };
-
-  useEffect(() => {
-    if (token) {
-      getUserCart();
-    }
-  }, [token]);
 
   const getCartCount = () => {
     return Object.values(cartItems).reduce((totalCount, shades) => {
@@ -225,7 +231,6 @@ const ShopContextProvider = (props) => {
     }, 0);
   };
 
-  // Get total cart amount
   const getTotalCartAmount = () => {
     return Object.entries(cartItems).reduce((total, [itemId, shades]) => {
       const product = findProductById(itemId);
@@ -247,7 +252,6 @@ const ShopContextProvider = (props) => {
     setSearchQuery,
     cartItems,
     addToCart,
-    setCartItems,
     updateCart,
     notifications,
     setNotifications,
@@ -260,7 +264,7 @@ const ShopContextProvider = (props) => {
     setToken,
     username,
     setUsername,
-    findProductById, // Expose this for components to use
+    findProductById,
   };
 
   return <ShopContext.Provider value={value}>{props.children}</ShopContext.Provider>;

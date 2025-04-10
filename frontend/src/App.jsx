@@ -13,7 +13,6 @@ import LoginPopup from './components/LoginPopup'
 import Orders from './pages/Orders'
 import PlaceOrder from './pages/PlaceOrder'
 import Navbar from './components/Navbar'
-import NotificationPopup from './components/NotificationPopup'
 import Footer from './components/Footer'
 import { toast, ToastContainer } from "react-toastify"; // Import ToastContainer
 import 'react-toastify/dist/ReactToastify.css'; // Import toast CSS
@@ -42,7 +41,6 @@ const App = () => {
         <Route path='/orders' element={<Orders/>}/>
         <Route path='/place-order' element={<PlaceOrder/>}/>
         <Route path="/payment-success" element={<PaymentSuccess />} />
-        <Route path='/notifications' element={<NotificationPopup/>}/> 
         </Routes>  
         <Chatbot  />  
         <Footer />  

@@ -6,44 +6,45 @@ import { assets } from '../assets/assets';
 import ProductItem from '../components/ProductItem';
 
 const Lips = () => {
-  const { products, searchQuery} = useContext(ShopContext);
+  const { products, searchQuery } = useContext(ShopContext);
   const [showFilter, setShowFilter] = useState(false);
-  const [filterProducts,setFilterProducts] = useState([]);
-  const [category,setCategory] = useState([]);
-  const [brand,setBrand] = useState([]);
-  const [sortType,setSortType] =useState('relavent')
- 
+  const [filterProducts, setFilterProducts] = useState(
+    products.filter((item) => item.category === 'Lips')
+  );
+  const [category, setCategory] = useState([]);
+  const [brand, setBrand] = useState([]);
+  const [sortType, setSortType] = useState('relavent');
 
   const toggleBrand = (e) => {
     if (brand.includes(e.target.value)) {
-      setBrand(prev=> prev.filter(item => item !== e.target.value))
+      setBrand(prev => prev.filter(item => item !== e.target.value))
     }
     else {
-      setBrand(prev=> [...prev, e.target.value])
+      setBrand(prev => [...prev, e.target.value])
     }
   }
 
   const toggleCategory = (e) => {
     if (category.includes(e.target.value)) {
-      setCategory(prev=> prev.filter(item => item !== e.target.value))
+      setCategory(prev => prev.filter(item => item !== e.target.value))
     }
     else {
-      setCategory(prev=> [...prev, e.target.value])
+      setCategory(prev => [...prev, e.target.value])
     }
   }
 
   const applyFilter = () => {
-    let productsCopy =products.slice();
-
+    let productsCopy = products.slice();
     productsCopy = productsCopy.filter((item) => item.category === 'Lips');
-
-    if(brand.length > 0){
+    
+    if (brand.length > 0) {
       productsCopy = productsCopy.filter(item => brand.includes(item.brand))
     }
 
-    if(category.length > 0){
+    if (category.length > 0) {
       productsCopy = productsCopy.filter(item => category.includes(item.category))
     }
+    
     if (searchQuery) {
       productsCopy = productsCopy.filter((item) =>
         item.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -53,31 +54,35 @@ const Lips = () => {
     setFilterProducts(productsCopy)
   }
 
-  const sortProduct = () =>{
+  const sortProduct = () => {
+    let fpCopy = [...filterProducts]; // Create a new array to avoid mutating state directly
 
-    let fpCopy = filterProducts.slice();
-
-    switch(sortType){
-      case'low-high':
-      setFilterProducts(fpCopy.sort((a,b)=>(a.price -b.price)));
-      break;
-      case'high-low':
-      setFilterProducts(fpCopy.sort((a,b)=>(b.price -a.price)));
-      break;
+    switch (sortType) {
+      case 'low-high':
+        setFilterProducts([...fpCopy.sort((a, b) => (a.price - b.price))]);
+        break;
+      case 'high-low':
+        setFilterProducts([...fpCopy.sort((a, b) => (b.price - a.price))]);
+        break;
       default:
         applyFilter();
         break;
     }
-
   }
 
-  useEffect(()=>{ 
-    applyFilter();
-  },[brand,category, searchQuery])
+  useEffect(() => {
+    // Initialize with eyes products on first render
+    const initialProducts = products.filter((item) => item.category === 'Lips');
+    setFilterProducts(initialProducts);
+  }, [products]); // Add products as dependency
 
-  useEffect(()=>{ 
-   sortProduct()
-  },[sortType])
+  useEffect(() => {
+    applyFilter();
+  }, [brand, category, searchQuery])
+
+  useEffect(() => {
+    sortProduct()
+  }, [sortType])
 
   return (
     <div className="flex flex-col sm:flex-row gap-4 sm:gap-10 pt-10 border-t px-4 sm:px-8 lg:px-16">
@@ -136,6 +141,9 @@ const Lips = () => {
             </p>
             <p className="flex gap-2">
               <input className="w-3" type="checkbox" value={'YSL Beauty'}onChange={toggleBrand}/>YSL BEAUTY
+            </p>
+            <p className="flex gap-2">
+              <input className="w-3" type="checkbox" value={'Tarte'}onChange={toggleBrand}/>TARTE COSMETICS
             </p>
           </div>
         </div>

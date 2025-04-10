@@ -24,7 +24,7 @@ const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
+    fileSize: 10 * 1024 * 1024, // 10MB limit
   }
 });
 
@@ -37,7 +37,7 @@ export const productUpload = upload.fields([
   { name: 'image4', maxCount: 1 },
   
   // Shade images (supports up to 10 shades with 4 images each)
-  ...Array.from({ length: 10 }, (_, i) => [
+  ...Array.from({ length: 24 }, (_, i) => [
     { name: `shade${i}_image1`, maxCount: 1 },
     { name: `shade${i}_image2`, maxCount: 1 },
     { name: `shade${i}_image3`, maxCount: 1 },
