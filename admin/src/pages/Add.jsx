@@ -10,7 +10,7 @@ const Add = () => {
   const token = localStorage.getItem('token');  
 
   // Main product images
-  const [mainImages, setMainImages] = useState([null, null, null, null]);
+  const [mainImages, setMainImages] = useState([null]);
   
   // Product details
   const [name, setName] = useState('');
@@ -140,7 +140,7 @@ const Add = () => {
         setBrand('');
         setBestSeller(false);
         setShades([]);
-        setMainImages([null, null, null, null]);
+        setMainImages([null]);
       } else {
         toast.error(response.data.message || 'Failed to add product');
       }
@@ -161,9 +161,9 @@ const Add = () => {
       
       {/* Main Product Images */}
       <div className='w-full'>
-        <p className='mb-2 font-medium'>Main Product Images (1-4 images)</p>
+        <p className='mb-2 font-medium'>Main Product Image</p>
         <div className='flex gap-4'>
-          {[0, 1, 2, 3].map((index) => (
+          {[0].map((index) => (
             <label key={index} className='flex flex-col items-center'>
               <img 
                 className='w-24 h-24 object-cover border rounded-md'
@@ -231,6 +231,8 @@ const Add = () => {
             <option value='Dior'>DIOR</option>
             <option value='Estee Lauder'>ESTEE LAUDER</option>
             <option value='Armani Beauty'>ARMANI BEAUTY</option>
+            <option value='Chanel'>CHANEL</option>
+            <option value='Tarte'>TARTE</option>
           </select>
         </div>
         

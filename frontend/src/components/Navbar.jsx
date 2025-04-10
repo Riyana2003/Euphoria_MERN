@@ -120,33 +120,6 @@ const Navbar = () => {
               <img src={assets.cart} className="w-6 h-6 cursor-pointer" alt="Cart" />
             </Link>
 
-           {/* Notification Bell with Dropdown */}
-           <div className="relative">
-              <div className="cursor-pointer" onClick={() => setIsNotificationOpen(!isNotificationOpen)}>
-                <img src={assets.notification} className="w-6 h-6" alt="Notifications" />
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-600 text-white text-xs flex items-center justify-center rounded-full">{notifications.length}</span>
-              </div>
-
-              {/* Notifications Dropdown */}
-              {isNotificationOpen && (
-                <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
-                  <div className="p-2">
-                    <div className="max-h-60 overflow-y-auto">
-                      {notifications.length > 0 ? (
-                        notifications.map((notify, index) => (
-                          <div key={index} className="p-2 text-sm text-gray-800 border-b last:border-none">
-                            {notify.message}
-                          </div>
-                        ))
-                      ) : (
-                        <div className="p-2 text-sm text-gray-500">No notifications.</div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
             {/* Mobile Menu Toggle */}
             <img
               onClick={() => setVisible(!visible)}

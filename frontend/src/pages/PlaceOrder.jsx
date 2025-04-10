@@ -246,7 +246,7 @@ const PlaceOrder = () => {
             {cartData.map((item, index) => (
               <div key={index} className='flex items-center gap-3 mb-3 pb-3 border-b'>
                 <img 
-                  src={item.image} 
+                  src={item.shadeData?.image?.[0]} 
                   alt={item.name} 
                   className='w-12 h-12 object-cover rounded'
                 />

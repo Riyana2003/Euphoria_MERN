@@ -10,22 +10,18 @@ import authUser from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Protected routes
-router.use(authUser);
+// Profile routes
+router.route('/')
+    .get(authUser, getProfile)        
+    .put(authUser, updateProfile)     
+    .delete(authUser, deleteAccount); 
 
-// GET /api/profile
-router.get('/', getProfile);
+// Address routes
+router.route('/address')
+    .put(authUser, updateAddress);  
 
-// PUT /api/profile
-router.put('/', updateProfile);
-
-// PUT /api/profile/address
-router.put('/address', updateAddress);
-
-// PUT /api/profile/password
-router.put('/password', updatePassword);
-
-// DELETE /api/profile
-router.delete('/', deleteAccount);
+// Password routes
+router.route('/password')   
+    .put(authUser, updatePassword);   
 
 export default router;

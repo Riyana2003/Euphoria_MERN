@@ -1,31 +1,31 @@
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect } from 'react';
+/* eslint-disable react-hooks/exhaustive-deps */
+import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import { ShopContext } from '../context/ShopContext';
 
-const Profile = () => {
+const Profile = () => { 
     const [activeTab, setActiveTab] = useState('personal');
+    const { products, backendUrl } = useContext(ShopContext);
     const [userData, setUserData] = useState(null);
     const [formData, setFormData] = useState({
-        fullName: '',
         dateOfBirth: '',
         bloodGroup: '',
         gender: '',
         addresses: [],
         newAddress: {
             type: 'Home',
-            street: '',
-            city: '',
-            state: '',
-            zipCode: '',
-            isDefault: false
+            address_details: '',
+            number: ''
         },
-        currentPassword: '',
+        password: '',
         newPassword: '',
         confirmPassword: '',
         deletePassword: ''
     });
+    const [isEditing, setIsEditing] = useState(false);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -34,29 +34,28 @@ const Profile = () => {
 
     const fetchUserData = async () => {
         try {
-          const token = localStorage.getItem('authToken');
-          const response = await axios.get('/api/profile', {
-            headers: {token}
-          });
+            const token = localStorage.getItem('authToken');
+            const response = await axios.get(`${backendUrl}/api/profile`, {
+                headers: { token }
+            });
       
-          // Safely handle response
-          const user = response.data?.user || {};
-          const profile = user.profile || {}; // Fallback if profile missing
+            const user = response.data?.user || {};
+            const profile = user.profile || {};
       
-          setUserData(user);
-          setFormData(prev => ({
-            ...prev,
-            fullName: profile.fullName || '',
-            dateOfBirth: profile.dateOfBirth?.split('T')[0] || '',
-            bloodGroup: profile.bloodGroup || '',
-            gender: profile.gender || '',
-            addresses: profile.addresses || []
-          }));
+            setUserData(user);
+            setFormData(prev => ({
+                ...prev,
+                dateOfBirth: profile.dateOfBirth?.split('T')[0] || '',
+                bloodGroup: profile.bloodGroup || '',
+                gender: profile.gender || '',
+                addresses: profile.addresses || []
+            }));
+            setIsEditing(false);
         } catch (error) {
-          console.error("Fetch error:", error);
-          toast.error(error.response?.data?.message || 'Failed to load profile');
+            console.error("Fetch error:", error);
+            toast.error(error.response?.data?.message || 'Failed to load profile');
         }
-      };
+    };
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -64,97 +63,117 @@ const Profile = () => {
     };
 
     const handleAddressChange = (e) => {
-        const { name, value, type, checked } = e.target;
+        const { name, value } = e.target;
         setFormData(prev => ({
             ...prev,
             newAddress: {
                 ...prev.newAddress,
-                [name]: type === 'checkbox' ? checked : value
+                [name]: value
             }
         }));
     };
 
-    const handleAddAddress = () => {
-        const newAddresses = [...formData.addresses, formData.newAddress];
-        // Ensure only one default address
-        if (formData.newAddress.isDefault) {
-            newAddresses.forEach(addr => addr.isDefault = false);
-            newAddresses[newAddresses.length - 1].isDefault = true;
+    const handleAddAddress = async () => {
+        try {
+            const token = localStorage.getItem('authToken');
+            const response = await axios.post(
+                `${backendUrl}/api/profile/addresses`,
+                formData.newAddress,
+                { headers: { token } }
+            );
+            
+            toast.success('Address added successfully');
+            fetchUserData();
+            // Reset new address form
+            setFormData(prev => ({
+                ...prev,
+                newAddress: {
+                    type: 'Home',
+                    address_details: '',
+                    number: ''
+                }
+            }));
+        } catch (error) {
+            console.error("Add address error:", error);
+            toast.error(error.response?.data?.message || 'Failed to add address');
         }
-        setFormData(prev => ({
-            ...prev,
-            addresses: newAddresses,
-            newAddress: {
-                type: 'Home',
-                street: '',
-                city: '',
-                state: '',
-                zipCode: '',
-                isDefault: false
-            }
-        }));
     };
 
-    const handleRemoveAddress = (index) => {
-        const newAddresses = [...formData.addresses];
-        newAddresses.splice(index, 1);
-        setFormData(prev => ({ ...prev, addresses: newAddresses }));
+    const handleRemoveAddress = async (addressId) => {
+        try {
+            const token = localStorage.getItem('authToken');
+            await axios.delete(
+                `${backendUrl}/api/profile/addresses/${addressId}`,
+                { headers: { token } }
+            );
+            toast.success('Address removed successfully');
+            fetchUserData();
+        } catch (error) {
+            console.error("Remove address error:", error);
+            toast.error(error.response?.data?.message || 'Failed to remove address');
+        }
     };
 
     const handleSubmitProfile = async (e) => {
         e.preventDefault();
         try {
             const token = localStorage.getItem('authToken');
-            await axios.put('/api/profile', {
-                fullName: formData.fullName,
+            await axios.put(`${backendUrl}/api/profile`, {
                 dateOfBirth: formData.dateOfBirth,
                 bloodGroup: formData.bloodGroup,
                 gender: formData.gender
             }, {
-                headers: { Authorization: `Bearer ${token}` }
+                headers: { token }
             });
             toast.success('Profile updated successfully');
             fetchUserData();
         } catch (error) {
-            toast.error('Failed to update profile');
-        }
-    };
-
-    const handleSubmitAddress = async (e) => {
-        e.preventDefault();
-        try {
-            const token = localStorage.getItem('authToken');
-            await axios.put('/api/profile/address', {
-                addresses: formData.addresses
-            }, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            toast.success('Addresses updated successfully');
-            fetchUserData();
-        } catch (error) {
-            toast.error('Failed to update addresses');
+            console.error("Update profile error:", error);
+            toast.error(error.response?.data?.message || 'Failed to update profile');
         }
     };
 
     const handleChangePassword = async (e) => {
         e.preventDefault();
+        
         if (formData.newPassword !== formData.confirmPassword) {
             toast.error('Passwords do not match');
             return;
         }
+    
+        if (formData.newPassword.length < 8) {
+            toast.error('Password must be at least 8 characters');
+            return;
+        }
+    
         try {
             const token = localStorage.getItem('authToken');
-            const response = await axios.put('/api/profile/password', {
-                currentPassword: formData.currentPassword,
-                newPassword: formData.newPassword
-            }, {
-                headers: {token}
-            });
-            localStorage.setItem('authToken', response.data.token);
-            toast.success('Password changed successfully');
-            setFormData(prev => ({ ...prev, currentPassword: '', newPassword: '', confirmPassword: '' }));
+            const response = await axios.put(
+                `${backendUrl}/api/profile/password`,
+                {
+                    currentPassword: formData.password,
+                    newPassword: formData.newPassword
+                },
+                {
+                    headers: { token }
+                }
+            );
+    
+            if (response.data.token) {
+                localStorage.setItem('authToken', response.data.token);
+            }
+    
+            setFormData(prev => ({
+                ...prev,
+                password: '',
+                newPassword: '',
+                confirmPassword: ''
+            }));
+    
+            toast.success('Password updated successfully');
         } catch (error) {
-            toast.error(error.response?.data?.message || 'Failed to change password');
+            console.error('Password update error:', error);
+            toast.error(error.response?.data?.message || 'Failed to update password');
         }
     };
 
@@ -165,14 +184,15 @@ const Profile = () => {
         }
         try {
             const token = localStorage.getItem('authToken');
-            await axios.delete('/api/profile/account', {
+            await axios.delete(`${backendUrl}/api/profile/delete-account`, {
                 data: { password: formData.deletePassword },
-                headers: { Authorization: `Bearer ${token}` }
+                headers: { token }
             });
             toast.success('Account deleted successfully');
             localStorage.removeItem('authToken');
             navigate('/');
         } catch (error) {
+            console.error("Delete account error:", error);
             toast.error(error.response?.data?.message || 'Failed to delete account');
         }
     };
@@ -186,38 +206,32 @@ const Profile = () => {
                 <div className="w-full md:w-64 bg-white rounded-lg shadow p-4">
                     <div className="flex flex-col space-y-2">
                         <button
-                            onClick={() => setActiveTab('personal')}
-                            className={`px-4 py-2 text-left rounded ${activeTab === 'personal' ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-100'}`}
+                            onClick={() => {
+                                setActiveTab('personal');
+                                setIsEditing(false);
+                            }}
+                            className={`px-4 py-2 text-left rounded transition-colors ${activeTab === 'personal' ? 'bg-pink-100 text-pink-500' : 'hover:bg-gray-100'}`}
                         >
                             Personal Information
                         </button>
                         <button
-                            onClick={() => setActiveTab('address')}
-                            className={`px-4 py-2 text-left rounded ${activeTab === 'address' ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-100'}`}
+                            onClick={() => {
+                                setActiveTab('address');
+                                setIsEditing(false);
+                            }}
+                            className={`px-4 py-2 text-left rounded transition-colors ${activeTab === 'address' ? 'bg-pink-100 text-pink-500' : 'hover:bg-gray-100'}`}
                         >
                             My Addresses
                         </button>
                         <button
-                            onClick={() => setActiveTab('orders')}
-                            className={`px-4 py-2 text-left rounded ${activeTab === 'orders' ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-100'}`}
-                        >
-                            My Orders
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('wishlist')}
-                            className={`px-4 py-2 text-left rounded ${activeTab === 'wishlist' ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-100'}`}
-                        >
-                            Wishlist
-                        </button>
-                        <button
                             onClick={() => setActiveTab('password')}
-                            className={`px-4 py-2 text-left rounded ${activeTab === 'password' ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-100'}`}
+                            className={`px-4 py-2 text-left rounded transition-colors ${activeTab === 'password' ? 'bg-pink-100 text-pink-500' : 'hover:bg-gray-100'}`}
                         >
                             Change Password
                         </button>
                         <button
                             onClick={() => setActiveTab('delete')}
-                            className={`px-4 py-2 text-left rounded text-red-600 ${activeTab === 'delete' ? 'bg-red-100' : 'hover:bg-gray-100'}`}
+                            className={`px-4 py-2 text-left rounded transition-colors text-red-600 ${activeTab === 'delete' ? 'bg-red-100' : 'hover:bg-gray-100'}`}
                         >
                             Delete Account
                         </button>
@@ -229,225 +243,191 @@ const Profile = () => {
                     {/* Personal Information */}
                     {activeTab === 'personal' && (
                         <div>
-                            <h2 className="text-2xl font-bold mb-6">Personal Information</h2>
-                            <form onSubmit={handleSubmitProfile}>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                                        <input
-                                            type="text"
-                                            name="fullName"
-                                            value={formData.fullName}
-                                            onChange={handleInputChange}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                            required
-                                        />
+                            <div className="flex justify-between items-center mb-6">
+                                <h2 className="text-2xl font-bold text-pink-500">Personal Information</h2>
+                                {!isEditing && (
+                                    <button
+                                        onClick={() => setIsEditing(true)}
+                                        className="px-4 py-2 bg-pink-500 text-white rounded-md hover:bg-pink-600 transition-colors"
+                                    >
+                                        Edit Profile
+                                    </button>
+                                )}
+                            </div>
+                            
+                            {isEditing ? (
+                                <form onSubmit={handleSubmitProfile}>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
+                                            <input
+                                                type="date"
+                                                name="dateOfBirth"
+                                                value={formData.dateOfBirth}
+                                                onChange={handleInputChange}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-pink-500 focus:border-pink-500"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Blood Group</label>
+                                            <select
+                                                name="bloodGroup"
+                                                value={formData.bloodGroup}
+                                                onChange={handleInputChange}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-pink-500 focus:border-pink-500"
+                                            >
+                                                <option value="">Select Blood Group</option>
+                                                <option value="A+">A+</option>
+                                                <option value="A-">A-</option>
+                                                <option value="B+">B+</option>
+                                                <option value="B-">B-</option>
+                                                <option value="AB+">AB+</option>
+                                                <option value="AB-">AB-</option>
+                                                <option value="O+">O+</option>
+                                                <option value="O-">O-</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
+                                            <select
+                                                name="gender"
+                                                value={formData.gender}
+                                                onChange={handleInputChange}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-pink-500 focus:border-pink-500"
+                                            >
+                                                <option value="">Select Gender</option>
+                                                <option value="Male">Male</option>
+                                                <option value="Female">Female</option>
+                                                <option value="Other">Other</option>
+                                            </select>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
-                                        <input
-                                            type="date"
-                                            name="dateOfBirth"
-                                            value={formData.dateOfBirth}
-                                            onChange={handleInputChange}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Blood Group</label>
-                                        <select
-                                            name="bloodGroup"
-                                            value={formData.bloodGroup}
-                                            onChange={handleInputChange}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                    <div className="flex space-x-4">
+                                        <button
+                                            type="submit"
+                                            className="px-4 py-2 bg-pink-500 text-white rounded-md hover:bg-pink-600 transition-colors"
                                         >
-                                            <option value="">Select Blood Group</option>
-                                            <option value="A+">A+</option>
-                                            <option value="A-">A-</option>
-                                            <option value="B+">B+</option>
-                                            <option value="B-">B-</option>
-                                            <option value="AB+">AB+</option>
-                                            <option value="AB-">AB-</option>
-                                            <option value="O+">O+</option>
-                                            <option value="O-">O-</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
-                                        <select
-                                            name="gender"
-                                            value={formData.gender}
-                                            onChange={handleInputChange}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                            Save Changes
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsEditing(false)}
+                                            className="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300 transition-colors"
                                         >
-                                            <option value="">Select Gender</option>
-                                            <option value="Male">Male</option>
-                                            <option value="Female">Female</option>
-                                            <option value="Other">Other</option>
-                                        </select>
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </form>
+                            ) : (
+                                <div className="space-y-4">
+                                    <div className="border-b pb-4">
+                                        <h3 className="text-sm font-medium text-gray-500">Date of Birth</h3>
+                                        <p className="mt-1 text-lg">{formData.dateOfBirth || 'Not provided'}</p>
+                                    </div>
+                                    <div className="border-b pb-4">
+                                        <h3 className="text-sm font-medium text-gray-500">Blood Group</h3>
+                                        <p className="mt-1 text-lg">{formData.bloodGroup || 'Not provided'}</p>
+                                    </div>
+                                    <div className="border-b pb-4">
+                                        <h3 className="text-sm font-medium text-gray-500">Gender</h3>
+                                        <p className="mt-1 text-lg">{formData.gender || 'Not provided'}</p>
                                     </div>
                                 </div>
-                                <button
-                                    type="submit"
-                                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                                >
-                                    Save Changes
-                                </button>
-                            </form>
+                            )}
                         </div>
                     )}
 
                     {/* Addresses */}
                     {activeTab === 'address' && (
                         <div>
-                            <h2 className="text-2xl font-bold mb-6">My Addresses</h2>
-                            <form onSubmit={handleSubmitAddress}>
-                                <div className="mb-6">
-                                    {formData.addresses.map((address, index) => (
-                                        <div key={index} className="border p-4 rounded-md mb-4">
+                            <h2 className="text-2xl font-bold mb-6 text-pink-500">My Addresses</h2>
+                            <div className="mb-6">
+                                {formData.addresses.length > 0 ? (
+                                    formData.addresses.map((address, index) => (
+                                        <div key={address._id || index} className="border p-4 rounded-md mb-4 hover:border-pink-300 transition-colors">
                                             <div className="flex justify-between items-start">
                                                 <div>
-                                                    <p className="font-medium">{address.type} {address.isDefault && '(Default)'}</p>
-                                                    <p>{address.street}, {address.city}</p>
-                                                    <p>{address.state}, {address.zipCode}</p>
+                                                    <p className="font-medium">{address.type}</p>
+                                                    <p>{address.address_details}</p>
+                                                    <p>Contact Number: {address.number}</p>
                                                 </div>
                                                 <button
                                                     type="button"
-                                                    onClick={() => handleRemoveAddress(index)}
-                                                    className="text-red-600 hover:text-red-800"
+                                                    onClick={() => handleRemoveAddress(address._id)}
+                                                    className="text-red-600 hover:text-red-800 transition-colors"
                                                 >
                                                     Remove
                                                 </button>
                                             </div>
                                         </div>
-                                    ))}
-                                </div>
-
-                                <h3 className="text-xl font-semibold mb-4">Add New Address</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Address Type</label>
-                                        <select
-                                            name="type"
-                                            value={formData.newAddress.type}
-                                            onChange={handleAddressChange}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                        >
-                                            <option value="Home">Home</option>
-                                            <option value="Work">Work</option>
-                                            <option value="Other">Other</option>
-                                        </select>
-                                    </div>
-                                    <div className="flex items-center">
-                                        <input
-                                            type="checkbox"
-                                            name="isDefault"
-                                            checked={formData.newAddress.isDefault}
-                                            onChange={handleAddressChange}
-                                            className="mr-2"
-                                        />
-                                        <label className="text-sm font-medium text-gray-700">Set as default address</label>
-                                    </div>
-                                    <div className="md:col-span-2">
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Street Address</label>
-                                        <input
-                                            type="text"
-                                            name="street"
-                                            value={formData.newAddress.street}
-                                            onChange={handleAddressChange}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
-                                        <input
-                                            type="text"
-                                            name="city"
-                                            value={formData.newAddress.city}
-                                            onChange={handleAddressChange}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
-                                        <input
-                                            type="text"
-                                            name="state"
-                                            value={formData.newAddress.state}
-                                            onChange={handleAddressChange}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">ZIP Code</label>
-                                        <input
-                                            type="text"
-                                            name="zipCode"
-                                            value={formData.newAddress.zipCode}
-                                            onChange={handleAddressChange}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                            required
-                                        />
-                                    </div>
-                                </div>
-                                <div className="flex space-x-4">
-                                    <button
-                                        type="button"
-                                        onClick={handleAddAddress}
-                                        className="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300"
-                                    >
-                                        Add Address
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                                    >
-                                        Save All Addresses
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    )}
-
-                    {/* Orders */}
-                    {activeTab === 'orders' && (
-                        <div>
-                            <h2 className="text-2xl font-bold mb-6">My Orders</h2>
-                            <div className="bg-gray-100 p-4 rounded-md">
-                                <p>Order history will appear here</p>
-                                {/* You would map through orders here */}
+                                    ))
+                                ) : (
+                                    <p className="text-gray-500">No addresses saved yet.</p>
+                                )}
                             </div>
-                        </div>
-                    )}
 
-                    {/* Wishlist */}
-                    {activeTab === 'wishlist' && (
-                        <div>
-                            <h2 className="text-2xl font-bold mb-6">My Wishlist</h2>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                                {/* You would map through wishlist items here */}
-                                <p>Wishlist items will appear here</p>
+                            <h3 className="text-xl font-semibold mb-4 text-pink-500">Add New Address</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Address Type</label>
+                                    <select
+                                        name="type"
+                                        value={formData.newAddress.type}
+                                        onChange={handleAddressChange}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-pink-500 focus:border-pink-500"
+                                    >
+                                        <option value="Home">Home</option>
+                                        <option value="Work">Work</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Contact Number</label>
+                                    <input
+                                        type="text"
+                                        name="number"
+                                        value={formData.newAddress.number}
+                                        onChange={handleAddressChange}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-pink-500 focus:border-pink-500"
+                                        required
+                                    />
+                                </div>
+                                <div className="md:col-span-2">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Address Details</label>
+                                    <textarea
+                                        name="address_details"
+                                        value={formData.newAddress.address_details}
+                                        onChange={handleAddressChange}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-pink-500 focus:border-pink-500"
+                                        required
+                                        rows="3"
+                                    />
+                                </div>
                             </div>
+                            <button
+                                type="button"
+                                onClick={handleAddAddress}
+                                className="px-4 py-2 bg-pink-500 text-white rounded-md hover:bg-pink-600 transition-colors"
+                            >
+                                Add Address
+                            </button>
                         </div>
                     )}
 
                     {/* Change Password */}
                     {activeTab === 'password' && (
                         <div>
-                            <h2 className="text-2xl font-bold mb-6">Change Password</h2>
+                            <h2 className="text-2xl font-bold mb-6 text-pink-500">Change Password</h2>
                             <form onSubmit={handleChangePassword}>
                                 <div className="space-y-4 mb-6">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Current Password</label>
                                         <input
                                             type="password"
-                                            name="currentPassword"
-                                            value={formData.currentPassword}
+                                            name="password"
+                                            value={formData.password}
                                             onChange={handleInputChange}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-pink-500 focus:border-pink-500"
                                             required
                                         />
                                     </div>
@@ -458,7 +438,7 @@ const Profile = () => {
                                             name="newPassword"
                                             value={formData.newPassword}
                                             onChange={handleInputChange}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-pink-500 focus:border-pink-500"
                                             required
                                             minLength="8"
                                         />
@@ -470,7 +450,7 @@ const Profile = () => {
                                             name="confirmPassword"
                                             value={formData.confirmPassword}
                                             onChange={handleInputChange}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-pink-500 focus:border-pink-500"
                                             required
                                             minLength="8"
                                         />
@@ -478,7 +458,7 @@ const Profile = () => {
                                 </div>
                                 <button
                                     type="submit"
-                                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                                    className="px-4 py-2 bg-pink-500 text-white rounded-md hover:bg-pink-600 transition-colors"
                                 >
                                     Change Password
                                 </button>
@@ -489,7 +469,7 @@ const Profile = () => {
                     {/* Delete Account */}
                     {activeTab === 'delete' && (
                         <div>
-                            <h2 className="text-2xl font-bold mb-6">Delete Account</h2>
+                            <h2 className="text-2xl font-bold mb-6 text-pink-500">Delete Account</h2>
                             <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
                                 <p className="text-red-700">Warning: This action is permanent and cannot be undone. All your data will be deleted.</p>
                             </div>
@@ -501,13 +481,13 @@ const Profile = () => {
                                         name="deletePassword"
                                         value={formData.deletePassword}
                                         onChange={handleInputChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-pink-500 focus:border-pink-500"
                                         required
                                     />
                                 </div>
                                 <button
                                     type="submit"
-                                    className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                                    className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
                                 >
                                     Delete My Account
                                 </button>
