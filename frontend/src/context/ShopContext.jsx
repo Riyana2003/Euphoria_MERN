@@ -16,6 +16,8 @@ const ShopContextProvider = (props) => {
   const delivery_fee = 50;
   const backendUrl = import.meta.env.VITE_BACKEND_URL;
   const [products, setProducts] = useState([]);
+  const [searchResults, setSearchResults] = useState([]);
+  const [showSearchResults, setShowSearchResults] = useState(false);  
   const [token, setToken] = useState(() => localStorage.getItem("authToken") || "");
   const [cartItems, setCartItems] = useState(() => {
     // Initialize with local storage cart if exists
@@ -57,6 +59,20 @@ const ShopContextProvider = (props) => {
 
   const findProductById = (itemId) => {
     return products.find(product => product._id === itemId);
+  };
+  const searchProducts = (query) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    
+    const results = products.filter(product => 
+      product.name.toLowerCase().includes(query.toLowerCase()) ||
+      product.brand.toLowerCase().includes(query.toLowerCase())
+    );
+    
+    setSearchResults(results.slice(0, 5)); // Show max 5 results
+    setShowSearchResults(results.length > 0);
   };
 
   const validateShade = (itemId, shadeName) => {
@@ -151,7 +167,7 @@ const ShopContextProvider = (props) => {
 
     if (token) {
       try {
-        await axios.put(
+        await axios.post(
           `${backendUrl}/api/cart/update`, 
           { itemId, shade: shadeName, quantity: newQuantity }, 
           {
@@ -183,7 +199,7 @@ const ShopContextProvider = (props) => {
 
     if (token) {
       try {
-        await axios.delete(`${backendUrl}/api/cart/remove`, {
+        await axios.post(`${backendUrl}/api/cart/remove`, {
           data: { itemId, shade: shadeName },
           headers: {
             Authorization: `Bearer ${token}`
@@ -197,7 +213,7 @@ const ShopContextProvider = (props) => {
 
   const getUserCart = async () => {
     try {
-      const response = await axios.get(`${backendUrl}/api/cart`, {
+      const response = await axios.post(`${backendUrl}/api/cart/get`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -265,6 +281,10 @@ const ShopContextProvider = (props) => {
     username,
     setUsername,
     findProductById,
+    searchResults,
+    showSearchResults,
+    setShowSearchResults,
+    searchProducts,
   };
 
   return <ShopContext.Provider value={value}>{props.children}</ShopContext.Provider>;

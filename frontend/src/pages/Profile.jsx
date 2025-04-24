@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 /* eslint-disable no-unused-vars */
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect, useContext } from 'react';
@@ -8,9 +9,10 @@ import { ShopContext } from '../context/ShopContext';
 
 const Profile = () => { 
     const [activeTab, setActiveTab] = useState('personal');
-    const { products, backendUrl } = useContext(ShopContext);
+    const { backendUrl} = useContext(ShopContext);
     const [userData, setUserData] = useState(null);
     const [formData, setFormData] = useState({
+        username: '', 
         dateOfBirth: '',
         bloodGroup: '',
         gender: '',
@@ -34,8 +36,15 @@ const Profile = () => {
 
     const fetchUserData = async () => {
         try {
+            const userId = localStorage.getItem('user_id');
+            if (!userId) {
+                toast.error('User ID not found. Please login again.');
+                navigate('/login');
+                return;
+            }
+
             const token = localStorage.getItem('authToken');
-            const response = await axios.get(`${backendUrl}/api/profile`, {
+            const response = await axios.get(`${backendUrl}/api/profile/`, {
                 headers: { token }
             });
       
@@ -45,6 +54,7 @@ const Profile = () => {
             setUserData(user);
             setFormData(prev => ({
                 ...prev,
+                username: user.username || '', 
                 dateOfBirth: profile.dateOfBirth?.split('T')[0] || '',
                 bloodGroup: profile.bloodGroup || '',
                 gender: profile.gender || '',
@@ -75,16 +85,20 @@ const Profile = () => {
 
     const handleAddAddress = async () => {
         try {
+            const userId = localStorage.getItem('user_id');
+            if (!userId) {
+                toast.error('User ID not found. Please login again.');
+                return;
+            }
+
             const token = localStorage.getItem('authToken');
-            const response = await axios.post(
-                `${backendUrl}/api/profile/addresses`,
+            const response = await axios.put(`${backendUrl}/api/profile/address`,
                 formData.newAddress,
                 { headers: { token } }
             );
             
             toast.success('Address added successfully');
             fetchUserData();
-            // Reset new address form
             setFormData(prev => ({
                 ...prev,
                 newAddress: {
@@ -99,34 +113,37 @@ const Profile = () => {
         }
     };
 
-    const handleRemoveAddress = async (addressId) => {
-        try {
-            const token = localStorage.getItem('authToken');
-            await axios.delete(
-                `${backendUrl}/api/profile/addresses/${addressId}`,
-                { headers: { token } }
-            );
-            toast.success('Address removed successfully');
-            fetchUserData();
-        } catch (error) {
-            console.error("Remove address error:", error);
-            toast.error(error.response?.data?.message || 'Failed to remove address');
-        }
-    };
-
     const handleSubmitProfile = async (e) => {
         e.preventDefault();
         try {
             const token = localStorage.getItem('authToken');
-            await axios.put(`${backendUrl}/api/profile`, {
-                dateOfBirth: formData.dateOfBirth,
-                bloodGroup: formData.bloodGroup,
-                gender: formData.gender
-            }, {
-                headers: { token }
-            });
-            toast.success('Profile updated successfully');
-            fetchUserData();
+            if (!token) {
+                toast.error('Authentication token not found');
+                return;
+            }
+            
+            // Update profile info
+            const response = await axios.put(
+                `${backendUrl}/api/profile`,
+                {
+                    username: formData.username,
+                    dateOfBirth: formData.dateOfBirth,
+                    bloodGroup: formData.bloodGroup,
+                    gender: formData.gender
+                },
+                {
+                    headers: { token }
+                }
+            );
+
+            if (response.data.success) {
+                toast.success('Profile updated successfully');
+                // Update local state with the new data
+                setUserData(response.data.user);
+                setIsEditing(false);
+            } else {
+                toast.error(response.data.message || 'Profile update failed');
+            }
         } catch (error) {
             console.error("Update profile error:", error);
             toast.error(error.response?.data?.message || 'Failed to update profile');
@@ -184,7 +201,7 @@ const Profile = () => {
         }
         try {
             const token = localStorage.getItem('authToken');
-            await axios.delete(`${backendUrl}/api/profile/delete-account`, {
+            await axios.put(`${backendUrl}/api/profile/password`, {
                 data: { password: formData.deletePassword },
                 headers: { token }
             });
@@ -258,6 +275,17 @@ const Profile = () => {
                             {isEditing ? (
                                 <form onSubmit={handleSubmitProfile}>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                        <div className="md:col-span-2">
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                                            <input
+                                                type="text"
+                                                name="username"
+                                                value={formData.username}
+                                                onChange={handleInputChange}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-pink-500 focus:border-pink-500"
+                                                required
+                                            />
+                                        </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
                                             <input
@@ -320,6 +348,10 @@ const Profile = () => {
                                 </form>
                             ) : (
                                 <div className="space-y-4">
+                                     <div className="border-b pb-4">
+                                        <h3 className="text-sm font-medium text-gray-500">Username</h3>
+                                        <p className="mt-1 text-lg">{formData.username || 'Not provided'}</p>
+                                    </div>
                                     <div className="border-b pb-4">
                                         <h3 className="text-sm font-medium text-gray-500">Date of Birth</h3>
                                         <p className="mt-1 text-lg">{formData.dateOfBirth || 'Not provided'}</p>

@@ -9,17 +9,12 @@ import 'react-toastify/dist/ReactToastify.css';
 
 const ProductItem = ({ id, image, name, price, brand, bestseller }) => {
   const { currency, addToCart } = useContext(ShopContext);
-  const [rating, setRating] = useState(Math.floor(Math.random() * 3) + 3); // Random rating 3-5
   const [isHovered, setIsHovered] = useState(false);
   const navigate = useNavigate(); // Initialize navigate
 
   const handleAddToCart = (e) => {
     e.preventDefault();
     addToCart({ id, name, price, image: image[0] });
-    toast.success(`${name} added to cart!`, {
-      position: "bottom-right",
-      autoClose: 2000,
-    });
   };
 
   // New function to handle product click with scroll to top
@@ -29,20 +24,6 @@ const ProductItem = ({ id, image, name, price, brand, bestseller }) => {
     navigate(`/product/${id}`);
   };
 
-  const renderStars = () => {
-    return Array(5)
-      .fill(0)
-      .map((_, index) => (
-        <span
-          key={index}
-          className={`text-lg ${
-            index < rating ? 'text-yellow-500' : 'text-gray-300'
-          }`}
-        >
-          ★
-        </span>
-      ));
-  };
 
   return (
     <div 
@@ -79,7 +60,6 @@ const ProductItem = ({ id, image, name, price, brand, bestseller }) => {
             <p className="text-lg font-bold text-pink-600">
               {currency} {price.toFixed(2)}
             </p>
-            <div className="flex">{renderStars()}</div>
           </div>
         </div>
       </div>

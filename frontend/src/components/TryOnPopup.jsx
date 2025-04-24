@@ -11,17 +11,14 @@ import base3 from '../assets/base_3.png';
 // Import images from the model folders
 import beige1 from '../assets/model1/beige_1.png';
 import midnight1 from '../assets/model1/midnight_1.png';
-import nude1 from '../assets/model1/nude_1.png';
 import red1 from '../assets/model1/red_1.png';
 
 import beige2 from '../assets/model2/beige_2.png';
 import midnight2 from '../assets/model2/midnight_2.png';
-import nude2 from '../assets/model2/nude_2.png';
 import red2 from '../assets/model2/red_2.png';
 
 import beige3 from '../assets/model3/beige_3.png';
 import midnight3 from '../assets/model3/midnight_3.png';
-import nude3 from '../assets/model3/nude_3.png';
 import red3 from '../assets/model3/red_3.png';
 
 // Import eye shadow images
@@ -65,7 +62,6 @@ const TryOnPopup = ({
         switch (selectedLipColor) {
           case 'beige': return beige1;
           case 'midnight': return midnight1;
-          case 'nude': return nude1;
           case 'red': return red1;
           default: return beige1;
         }
@@ -73,7 +69,6 @@ const TryOnPopup = ({
         switch (selectedLipColor) {
           case 'beige': return beige2;
           case 'midnight': return midnight2;
-          case 'nude': return nude2;
           case 'red': return red2;
           default: return beige2;
         }
@@ -81,7 +76,6 @@ const TryOnPopup = ({
         switch (selectedLipColor) {
           case 'beige': return beige3;
           case 'midnight': return midnight3;
-          case 'nude': return nude3;
           case 'red': return red3;
           default: return beige3;
         }
@@ -143,7 +137,7 @@ const TryOnPopup = ({
           <div className="mt-4">
             <h3 className="text-lg font-medium mb-2">Select Lip Color</h3>
             <div className="flex gap-2 justify-center">
-              {['beige', 'midnight', 'nude', 'red'].map((color, index) => (
+              {['beige', 'midnight', 'red'].map((color, index) => (
                 <button
                   key={index}
                   className={`border py-2 px-4 bg-gray-100 rounded-md hover:bg-gray-200 ${

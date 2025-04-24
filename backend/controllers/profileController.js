@@ -3,17 +3,14 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import User from '../models/userModel.js';
 
-// Helper function to create JWT token
-const createToken = (userId) => {
-    return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
-        expiresIn: process.env.JWT_EXPIRES_IN || '30d'
-    });
+// Function to create a JWT token
+const createToken = (id) => {
+    return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 };
 
-// Profile Management Functions
 const getProfile = async (req, res) => {
     try {
-        const user = await User.findById(req.userId)
+        const user = await User.findById(req.user._id)
             .select('-password -__v -createdAt -updatedAt')
             .lean();
 
@@ -24,7 +21,7 @@ const getProfile = async (req, res) => {
             });
         }
 
-        // Initialize profile if doesn't exist
+        // Initialize profile with default values if it doesn't exist
         if (!user.profile) {
             user.profile = {
                 dateOfBirth: null,
@@ -34,9 +31,16 @@ const getProfile = async (req, res) => {
             };
         }
 
+        // Ensure cartData exists
+        if (!user.cartData) {
+            user.cartData = {};
+        }
+
         res.status(200).json({ 
             success: true, 
-            user 
+            user,
+            token: createToken(user._id),
+            userId: user._id
         });
     } catch (error) {
         console.error("Get profile error:", error);
@@ -49,23 +53,59 @@ const getProfile = async (req, res) => {
 
 const updateProfile = async (req, res) => {
     try {
-        const { dateOfBirth, bloodGroup, gender } = req.body;
+        const { username, dateOfBirth, bloodGroup, gender } = req.body;
+        const userId = req.user._id;
 
+        // Validate username if provided
+        if (username) {
+            if (username.length < 3 || username.length > 30) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: "Username must be between 3 and 30 characters" 
+                });
+            }
+            
+            const usernameExists = await User.findOne({ 
+                username: username.toLowerCase(), 
+                _id: { $ne: userId } 
+            });
+            
+            if (usernameExists) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: "Username already in use" 
+                });
+            }
+        }
+
+        // Validate bloodGroup against enum values
+        if (bloodGroup && !['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].includes(bloodGroup)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Invalid blood group" 
+            });
+        }
+
+        // Validate gender against enum values
+        if (gender && !['Male', 'Female', 'Other'].includes(gender)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Invalid gender" 
+            });
+        }
+
+        // Prepare update data
         const updateData = {
-            'profile.dateOfBirth': dateOfBirth,
-            'profile.bloodGroup': bloodGroup,
-            'profile.gender': gender
+            ...(username && { username: username.toLowerCase() }),
+            profile: {
+                ...(dateOfBirth && { dateOfBirth }),
+                ...(bloodGroup && { bloodGroup }),
+                ...(gender && { gender })
+            }
         };
 
-        // Remove undefined fields
-        Object.keys(updateData).forEach(key => {
-            if (updateData[key] === undefined) {
-                delete updateData[key];
-            }
-        });
-
         const updatedUser = await User.findByIdAndUpdate(
-            req.userId,
+            userId,
             { $set: updateData },
             { 
                 new: true,
@@ -101,12 +141,35 @@ const updateProfile = async (req, res) => {
 
 const addAddress = async (req, res) => {
     try {
+        const userId = req.user._id;
         const { type, address_details, number } = req.body;
 
+        // Validate required fields
         if (!type || !address_details || !number) {
             return res.status(400).json({ 
                 success: false, 
                 message: "Type, address details and number are required" 
+            });
+        }
+
+        // Validate address type against enum values
+        if (!['Home', 'Work', 'Other'].includes(type)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Invalid address type. Must be Home, Work, or Other" 
+            });
+        }
+
+        // Check for unique address number
+        const user = await User.findOne({
+            _id: userId,
+            'profile.addresses.number': number
+        });
+
+        if (user) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Address number must be unique" 
             });
         }
 
@@ -117,7 +180,7 @@ const addAddress = async (req, res) => {
         };
 
         const updatedUser = await User.findByIdAndUpdate(
-            req.userId,
+            userId,
             { $push: { 'profile.addresses': newAddress } },
             { 
                 new: true,
@@ -125,23 +188,16 @@ const addAddress = async (req, res) => {
             }
         ).select('-password -__v -createdAt -updatedAt');
 
-        if (!updatedUser) {
-            return res.status(404).json({ 
-                success: false, 
-                message: "User not found" 
-            });
-        }
-
         res.status(200).json({ 
             success: true, 
             addresses: updatedUser.profile.addresses 
         });
     } catch (error) {
         console.error("Add address error:", error);
-        if (error.code === 11000) {
+        if (error.name === 'ValidationError') {
             return res.status(400).json({ 
                 success: false, 
-                message: "Address number must be unique" 
+                message: error.message 
             });
         }
         res.status(500).json({ 
@@ -153,9 +209,11 @@ const addAddress = async (req, res) => {
 
 const updateAddress = async (req, res) => {
     try {
+        const userId = req.user._id;
         const { addressId } = req.params;
         const { type, address_details, number } = req.body;
 
+        // Validate required fields
         if (!type || !address_details || !number) {
             return res.status(400).json({ 
                 success: false, 
@@ -163,7 +221,15 @@ const updateAddress = async (req, res) => {
             });
         }
 
-        const user = await User.findById(req.userId);
+        // Validate address type against enum values
+        if (!['Home', 'Work', 'Other'].includes(type)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Invalid address type. Must be Home, Work, or Other" 
+            });
+        }
+
+        const user = await User.findById(userId);
         if (!user) {
             return res.status(404).json({ 
                 success: false, 
@@ -171,25 +237,32 @@ const updateAddress = async (req, res) => {
             });
         }
 
-        // Find the address index
-        const addressIndex = user.profile.addresses.findIndex(
-            addr => addr._id.toString() === addressId
-        );
-
-        if (addressIndex === -1) {
+        // Find the address
+        const address = user.profile.addresses.id(addressId);
+        if (!address) {
             return res.status(404).json({ 
                 success: false, 
                 message: "Address not found" 
             });
         }
 
-        // Update the address
-        user.profile.addresses[addressIndex] = {
-            ...user.profile.addresses[addressIndex].toObject(),
-            type,
-            address_details,
-            number
-        };
+        // Check if number is being changed to an existing one
+        if (number !== address.number) {
+            const numberExists = user.profile.addresses.some(
+                addr => addr.number === number && addr._id.toString() !== addressId
+            );
+            if (numberExists) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: "Address number must be unique" 
+                });
+            }
+        }
+
+        // Update address
+        address.type = type;
+        address.address_details = address_details;
+        address.number = number;
 
         await user.save();
 
@@ -199,10 +272,10 @@ const updateAddress = async (req, res) => {
         });
     } catch (error) {
         console.error("Update address error:", error);
-        if (error.code === 11000) {
+        if (error.name === 'ValidationError') {
             return res.status(400).json({ 
                 success: false, 
-                message: "Address number must be unique" 
+                message: error.message 
             });
         }
         res.status(500).json({ 
@@ -214,10 +287,11 @@ const updateAddress = async (req, res) => {
 
 const deleteAddress = async (req, res) => {
     try {
+        const userId = req.user._id;
         const { addressId } = req.params;
 
         const updatedUser = await User.findByIdAndUpdate(
-            req.userId,
+            userId,
             { $pull: { 'profile.addresses': { _id: addressId } } },
             { 
                 new: true 
@@ -246,8 +320,10 @@ const deleteAddress = async (req, res) => {
 
 const updatePassword = async (req, res) => {
     try {
+        const userId = req.user._id;
         const { currentPassword, newPassword } = req.body;
 
+        // Validate required fields
         if (!currentPassword || !newPassword) {
             return res.status(400).json({ 
                 success: false, 
@@ -255,6 +331,7 @@ const updatePassword = async (req, res) => {
             });
         }
 
+        // Validate password strength
         if (newPassword.length < 8) {
             return res.status(400).json({ 
                 success: false, 
@@ -262,7 +339,7 @@ const updatePassword = async (req, res) => {
             });
         }
 
-        const user = await User.findById(req.userId);
+        const user = await User.findById(userId);
         if (!user) {
             return res.status(404).json({ 
                 success: false, 
@@ -270,6 +347,7 @@ const updatePassword = async (req, res) => {
             });
         }
 
+        // Verify current password
         const isMatch = await bcrypt.compare(currentPassword, user.password);
         if (!isMatch) {
             return res.status(401).json({ 
@@ -287,11 +365,12 @@ const updatePassword = async (req, res) => {
             });
         }
 
+        // Hash and save new password
         const salt = await bcrypt.genSalt(10);
         user.password = await bcrypt.hash(newPassword, salt);
         await user.save();
 
-        // Generate new token (optional but recommended)
+        // Generate new token
         const token = createToken(user._id);
 
         res.status(200).json({ 
@@ -310,6 +389,7 @@ const updatePassword = async (req, res) => {
 
 const deleteAccount = async (req, res) => {
     try {
+        const userId = req.user._id;
         const { password } = req.body;
 
         if (!password) {
@@ -319,7 +399,7 @@ const deleteAccount = async (req, res) => {
             });
         }
 
-        const user = await User.findById(req.userId);
+        const user = await User.findById(userId);
         if (!user) {
             return res.status(404).json({ 
                 success: false, 
@@ -327,6 +407,7 @@ const deleteAccount = async (req, res) => {
             });
         }
 
+        // Verify password
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
             return res.status(401).json({ 
@@ -335,7 +416,7 @@ const deleteAccount = async (req, res) => {
             });
         }
 
-        await User.findByIdAndDelete(req.userId);
+        await User.findByIdAndDelete(userId);
         
         res.status(200).json({ 
             success: true, 

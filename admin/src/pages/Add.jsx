@@ -233,6 +233,19 @@ const Add = () => {
             <option value='Armani Beauty'>ARMANI BEAUTY</option>
             <option value='Chanel'>CHANEL</option>
             <option value='Tarte'>TARTE</option>
+            <option value='Bobbi Brown'>BOBBI BROWN</option>
+            <option value='Charlotee Tilbury'>CHARLOTEE TILBURY</option>
+            <option value='Fenty Beauty'>FENTY BEAUTY</option>
+            <option value='Hermes Beauty'>HERMES BEAUTY</option>
+            <option value='Huda Beauty'>HUDA BEAUTY</option>
+            <option value='Lancome'>LANCOME</option>
+            <option value='Pat McGrath Labs'>PAT McGRATH LABS</option>
+            <option value='Tomford Beauty'>TOMFORD BEAUTY</option>
+            <option value='Valentino Beauty'>VALENTINO BEAUTY</option>
+            <option value='Westman Atelier'>WESTMAN ATELIER</option>
+            <option value='YSL Beauty'>YSL BEAUTY</option>
+            <option value='Rare Beauty'>RARE BEAUTY</option>
+            <option value='Two Faced'>TWO FACED</option>
           </select>
         </div>
         

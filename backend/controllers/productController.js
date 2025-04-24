@@ -21,7 +21,7 @@ const addProduct = async (req, res) => {
             });
         }
 
-        // Process main product images (image1, image2, etc.)
+        // Process main product image
         const mainImages = [];
         for (let i = 1; i <= 4; i++) {
             if (req.files[`image${i}`] && req.files[`image${i}`][0]) {

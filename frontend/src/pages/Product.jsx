@@ -15,7 +15,6 @@ const Product = () => {
   const [productData, setProductData] = useState(null);
   const [currentImages, setCurrentImages] = useState([]);
   const [mainImage, setMainImage] = useState('');
-  const [rating, setRating] = useState(4);
   const [quantity, setQuantity] = useState(1);
   const [showTryOnPopup, setShowTryOnPopup] = useState(false);
   const [selectedShade, setSelectedShade] = useState(null);
@@ -72,17 +71,6 @@ const Product = () => {
     }
   }, [selectedShade, productData]);
 
-  const renderStars = () => {
-    return Array(5).fill(0).map((_, index) => (
-      <span
-        key={index}
-        className={`text-lg ${index < rating ? 'text-yellow-500' : 'text-gray-300'}`}
-      >
-        ★
-      </span>
-    ));
-  };
-
   const handleShadeSelect = (shade) => {
     setSelectedShade({
       ...shade,
@@ -101,8 +89,6 @@ const Product = () => {
       selectedShade?.name || 'Default',
       quantity
     );
-    
-    toast.success(`${quantity} ${productData.name} added to cart`);
   };
 
   if (isLoading) {
@@ -176,11 +162,6 @@ const Product = () => {
                 Bestseller
               </span>
             )}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <div className="flex">{renderStars()}</div>
-            <p className="text-sm text-gray-500">({productData.reviews?.length || 0} reviews)</p>
           </div>
 
           <p className="text-2xl font-semibold text-pink-600">
@@ -276,9 +257,9 @@ const Product = () => {
             {(productData.category === 'Lips' || productData.category === 'Eyes') && (
               <button
                 onClick={() => setShowTryOnPopup(true)}
-                className="flex items-center justify-center bg-white text-pink-600 px-6 py-3 rounded-lg shadow-md border border-pink-600 hover:bg-pink-50 transition-colors flex-1"
+                className="flex items-center justify-center bg-pink-600 text-white px-6 py-3 rounded-lg shadow-md border border-pink-600 hover:bg-pink700 transition-colors flex-1"
               >
-                <img src={assets.camera} className="w-5 h-5 mr-2" alt="Try On" />
+             
                 Try it On
               </button>
             )}

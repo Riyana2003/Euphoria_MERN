@@ -56,10 +56,6 @@ const List = () => {
     }
   };
 
-  const handleEditProduct = (productId) => {
-    navigate(`/edit-product/${productId}`);
-  };
-
   useEffect(() => {
     fetchList();
   }, []);
@@ -123,15 +119,6 @@ const List = () => {
                   {item.price?.toLocaleString() || '0'}
                 </div>
                 <div className="col-span-12 md:col-span-2 flex justify-center gap-4">
-                  <button
-                    onClick={() => handleEditProduct(item._id)}
-                    className="text-pink-400 hover:text-pink-600 cursor-pointer p-2 rounded-full hover:bg-blue-50 transition-colors"
-                    title='Edit Product'
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                  </button>
                   <button
                     onClick={() => removeProduct(item._id)}
                     className="text-red-600 hover:text-red-800 cursor-pointer p-2 rounded-full hover:bg-red-50 transition-colors"
