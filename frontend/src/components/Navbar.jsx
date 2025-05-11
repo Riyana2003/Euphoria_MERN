@@ -79,9 +79,16 @@ const Navbar = () => {
   };
 
   const handleLogout = () => {
-    setToken(null);
-    setUsername(null);
+    // Clear from state
+    localStorage.removeItem('authToken'); 
+    localStorage.removeItem('username');   
+    localStorage.removeItem('cart');  
+    localStorage.removeItem('user_id'); 
+    localStorage.removeItem('userOrders');   
+    
     toast.success("You have logged out.");
+    navigate('/', { replace: true });
+  window.location.reload();
   };
 
   return (

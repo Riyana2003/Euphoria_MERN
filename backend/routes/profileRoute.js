@@ -2,9 +2,6 @@ import express from 'express';
 import {
     getProfile,
     updateProfile,
-    addAddress,
-    updateAddress,
-    deleteAddress,
     updatePassword,
     deleteAccount
 } from '../controllers/profileController.js';
@@ -15,24 +12,15 @@ const router = express.Router();
 router.use(authUser);
 
 // GET /api/profile - Get user profile
-router.get('/', getProfile);
+router.get('/',authUser, getProfile);
 
 // PUT /api/profile - Update profile
-router.put('/', updateProfile);
-
-// POST /api/profile/address - Add new address
-router.post('/address', addAddress);
-
-// PUT /api/profile/address/:addressId - Update address
-router.put('/address/:addressId', updateAddress);
-
-// DELETE /api/profile/address/:addressId - Delete address
-router.delete('/address/:addressId', deleteAddress);
+router.put('/',authUser, updateProfile);
 
 // PUT /api/profile/password - Update password
-router.put('/password', updatePassword);
+router.put('/password', authUser, updatePassword);
 
 // DELETE /api/profile - Delete account
-router.delete('/', deleteAccount);
+router.delete('/',authUser, deleteAccount);
 
 export default router;

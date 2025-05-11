@@ -1,22 +1,5 @@
 import mongoose from "mongoose";
 
-const addressSchema = new mongoose.Schema({
-    type: { 
-        type: String, 
-        enum: ['Home', 'Work', 'Other'], 
-        required: true 
-    },
-    address_details: { 
-        type: String, 
-        required: true 
-    },
-    number: { 
-        type: String, 
-        required: true,
-        unique: true 
-    }
-}, { _id: true });
-
 const userSchema = new mongoose.Schema({
     username: { 
         type: String, 
@@ -41,7 +24,7 @@ const userSchema = new mongoose.Schema({
     },
     profile: {
         dateOfBirth: { 
-            type: Date 
+            type: Date, 
         },
         bloodGroup: { 
             type: String, 
@@ -50,10 +33,12 @@ const userSchema = new mongoose.Schema({
         gender: { 
             type: String, 
             enum: ['Male', 'Female', 'Other'] 
-        },
-        addresses: [addressSchema]
+        }
     }
-}, { minimize: false, timestamps: true });
+}, { 
+    minimize: false, 
+    timestamps: true 
+});
 
 const userModel = mongoose.models.user || mongoose.model('user', userSchema);
 export default userModel;

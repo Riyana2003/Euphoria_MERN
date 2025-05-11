@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 /* eslint-disable react-refresh/only-export-components */
 /* eslint-disable react/prop-types */
 /* eslint-disable react-hooks/exhaustive-deps */
@@ -6,7 +7,6 @@ import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-
 
 export const ShopContext = createContext();
 
@@ -20,9 +20,12 @@ const ShopContextProvider = (props) => {
   const [showSearchResults, setShowSearchResults] = useState(false);  
   const [token, setToken] = useState(() => localStorage.getItem("authToken") || "");
   const [cartItems, setCartItems] = useState(() => {
-    // Initialize with local storage cart if exists
     const localCart = localStorage.getItem("cart");
-    return localCart ? JSON.parse(localCart) : {};
+    try {
+      return localCart ? JSON.parse(localCart) : {};
+    } catch (e) {
+      return {};
+    }
   });
   const [username, setUsername] = useState(() => localStorage.getItem("username") || "");
   const [notifications, setNotifications] = useState([]);
@@ -60,6 +63,7 @@ const ShopContextProvider = (props) => {
   const findProductById = (itemId) => {
     return products.find(product => product._id === itemId);
   };
+
   const searchProducts = (query) => {
     if (!query.trim()) {
       setSearchResults([]);
@@ -71,7 +75,7 @@ const ShopContextProvider = (props) => {
       product.brand.toLowerCase().includes(query.toLowerCase())
     );
     
-    setSearchResults(results.slice(0, 5)); // Show max 5 results
+    setSearchResults(results.slice(0, 5));
     setShowSearchResults(results.length > 0);
   };
 
@@ -200,7 +204,9 @@ const ShopContextProvider = (props) => {
     if (token) {
       try {
         await axios.post(`${backendUrl}/api/cart/remove`, {
-          data: { itemId, shade: shadeName },
+          itemId,
+          shade: shadeName
+        }, {
           headers: {
             Authorization: `Bearer ${token}`
           }
@@ -213,28 +219,28 @@ const ShopContextProvider = (props) => {
 
   const getUserCart = async () => {
     try {
-      const response = await axios.post(`${backendUrl}/api/cart/get`, {
+      const response = await axios.get(`${backendUrl}/api/cart/get`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
       });
       
       if (response.data.success) {
-        const enhancedCart = {};
+        const cartItems = {};
         for (const [itemId, shades] of Object.entries(response.data.cartData || {})) {
-          enhancedCart[itemId] = {};
+          cartItems[itemId] = {};
           const product = findProductById(itemId);
           
           for (const [shadeName, itemData] of Object.entries(shades)) {
             const shadeData = product?.shades.find(s => s.name === shadeName);
-            enhancedCart[itemId][shadeName] = {
+            cartItems[itemId][shadeName] = {
               quantity: itemData.quantity,
               shadeData: shadeData || { name: shadeName }
             };
           }
         }
         
-        setCartItems(enhancedCart);
+        setCartItems(cartItems);
       }
     } catch (error) {
       console.error("Error fetching user cart:", error);
@@ -260,6 +266,13 @@ const ShopContextProvider = (props) => {
     }, 0);
   };
 
+  const safeSetCartItems = (newCart) => {
+    if (typeof newCart === 'object') {
+      setCartItems(newCart);
+      localStorage.setItem("cart", JSON.stringify(newCart));
+    }
+  };
+
   const value = {
     products,
     currency,
@@ -267,6 +280,7 @@ const ShopContextProvider = (props) => {
     searchQuery,
     setSearchQuery,
     cartItems,
+    setCartItems: safeSetCartItems,
     addToCart,
     updateCart,
     notifications,

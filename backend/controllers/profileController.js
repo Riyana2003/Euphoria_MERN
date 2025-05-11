@@ -1,20 +1,20 @@
-import validator from "validator";
 import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
-import User from '../models/userModel.js';
+import userModel from "../models/userModel.js";
 
-// Function to create a JWT token
-const createToken = (id) => {
-    return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '7d' });
-};
 
 const getProfile = async (req, res) => {
     try {
-        const user = await User.findById(req.user._id)
+        const userId = req.user._id;
+        console.log('Fetching user profile for ID:', userId);
+        
+        const userData = await userModel.findById(userId)
             .select('-password -__v -createdAt -updatedAt')
             .lean();
 
-        if (!user) {
+        console.log('User fetched from database:', userData);
+
+        if (!userData) {
+            console.log('User not found in database');
             return res.status(404).json({ 
                 success: false, 
                 message: "User not found" 
@@ -22,25 +22,28 @@ const getProfile = async (req, res) => {
         }
 
         // Initialize profile with default values if it doesn't exist
-        if (!user.profile) {
-            user.profile = {
+        if (!userData.profile) {
+            console.log('Profile not found, initializing default profile');
+            userData.profile = {
                 dateOfBirth: null,
                 bloodGroup: null,
-                gender: null,
-                addresses: []
+                gender: null
             };
         }
 
         // Ensure cartData exists
-        if (!user.cartData) {
-            user.cartData = {};
+        if (!userData.cartData) {
+            console.log('Initializing empty cartData');
+            userData.cartData = {};
         }
+
+        console.log('Final user object being returned:', userData);
 
         res.status(200).json({ 
             success: true, 
-            user,
-            token: createToken(user._id),
-            userId: user._id
+            user: userData,
+            token: createToken(userData._id),
+            userId: userData._id
         });
     } catch (error) {
         console.error("Get profile error:", error);
@@ -65,7 +68,7 @@ const updateProfile = async (req, res) => {
                 });
             }
             
-            const usernameExists = await User.findOne({ 
+            const usernameExists = await userModel.findOne({ 
                 username: username.toLowerCase(), 
                 _id: { $ne: userId } 
             });
@@ -104,7 +107,7 @@ const updateProfile = async (req, res) => {
             }
         };
 
-        const updatedUser = await User.findByIdAndUpdate(
+        const updatedUser = await userModel.findByIdAndUpdate(
             userId,
             { $set: updateData },
             { 
@@ -139,185 +142,6 @@ const updateProfile = async (req, res) => {
     }
 };
 
-const addAddress = async (req, res) => {
-    try {
-        const userId = req.user._id;
-        const { type, address_details, number } = req.body;
-
-        // Validate required fields
-        if (!type || !address_details || !number) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Type, address details and number are required" 
-            });
-        }
-
-        // Validate address type against enum values
-        if (!['Home', 'Work', 'Other'].includes(type)) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Invalid address type. Must be Home, Work, or Other" 
-            });
-        }
-
-        // Check for unique address number
-        const user = await User.findOne({
-            _id: userId,
-            'profile.addresses.number': number
-        });
-
-        if (user) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Address number must be unique" 
-            });
-        }
-
-        const newAddress = {
-            type,
-            address_details,
-            number
-        };
-
-        const updatedUser = await User.findByIdAndUpdate(
-            userId,
-            { $push: { 'profile.addresses': newAddress } },
-            { 
-                new: true,
-                runValidators: true 
-            }
-        ).select('-password -__v -createdAt -updatedAt');
-
-        res.status(200).json({ 
-            success: true, 
-            addresses: updatedUser.profile.addresses 
-        });
-    } catch (error) {
-        console.error("Add address error:", error);
-        if (error.name === 'ValidationError') {
-            return res.status(400).json({ 
-                success: false, 
-                message: error.message 
-            });
-        }
-        res.status(500).json({ 
-            success: false, 
-            message: "Failed to add address" 
-        });
-    }
-};
-
-const updateAddress = async (req, res) => {
-    try {
-        const userId = req.user._id;
-        const { addressId } = req.params;
-        const { type, address_details, number } = req.body;
-
-        // Validate required fields
-        if (!type || !address_details || !number) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Type, address details and number are required" 
-            });
-        }
-
-        // Validate address type against enum values
-        if (!['Home', 'Work', 'Other'].includes(type)) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Invalid address type. Must be Home, Work, or Other" 
-            });
-        }
-
-        const user = await User.findById(userId);
-        if (!user) {
-            return res.status(404).json({ 
-                success: false, 
-                message: "User not found" 
-            });
-        }
-
-        // Find the address
-        const address = user.profile.addresses.id(addressId);
-        if (!address) {
-            return res.status(404).json({ 
-                success: false, 
-                message: "Address not found" 
-            });
-        }
-
-        // Check if number is being changed to an existing one
-        if (number !== address.number) {
-            const numberExists = user.profile.addresses.some(
-                addr => addr.number === number && addr._id.toString() !== addressId
-            );
-            if (numberExists) {
-                return res.status(400).json({ 
-                    success: false, 
-                    message: "Address number must be unique" 
-                });
-            }
-        }
-
-        // Update address
-        address.type = type;
-        address.address_details = address_details;
-        address.number = number;
-
-        await user.save();
-
-        res.status(200).json({ 
-            success: true, 
-            addresses: user.profile.addresses 
-        });
-    } catch (error) {
-        console.error("Update address error:", error);
-        if (error.name === 'ValidationError') {
-            return res.status(400).json({ 
-                success: false, 
-                message: error.message 
-            });
-        }
-        res.status(500).json({ 
-            success: false, 
-            message: "Failed to update address" 
-        });
-    }
-};
-
-const deleteAddress = async (req, res) => {
-    try {
-        const userId = req.user._id;
-        const { addressId } = req.params;
-
-        const updatedUser = await User.findByIdAndUpdate(
-            userId,
-            { $pull: { 'profile.addresses': { _id: addressId } } },
-            { 
-                new: true 
-            }
-        ).select('-password -__v -createdAt -updatedAt');
-
-        if (!updatedUser) {
-            return res.status(404).json({ 
-                success: false, 
-                message: "User not found" 
-            });
-        }
-
-        res.status(200).json({ 
-            success: true, 
-            addresses: updatedUser.profile.addresses 
-        });
-    } catch (error) {
-        console.error("Delete address error:", error);
-        res.status(500).json({ 
-            success: false, 
-            message: "Failed to delete address" 
-        });
-    }
-};
-
 const updatePassword = async (req, res) => {
     try {
         const userId = req.user._id;
@@ -339,8 +163,8 @@ const updatePassword = async (req, res) => {
             });
         }
 
-        const user = await User.findById(userId);
-        if (!user) {
+        const userData = await userModel.findById(userId);
+        if (!userData) {
             return res.status(404).json({ 
                 success: false, 
                 message: "User not found" 
@@ -348,7 +172,7 @@ const updatePassword = async (req, res) => {
         }
 
         // Verify current password
-        const isMatch = await bcrypt.compare(currentPassword, user.password);
+        const isMatch = await bcrypt.compare(currentPassword, userData.password);
         if (!isMatch) {
             return res.status(401).json({ 
                 success: false, 
@@ -357,7 +181,7 @@ const updatePassword = async (req, res) => {
         }
 
         // Check if new password is different
-        const isSamePassword = await bcrypt.compare(newPassword, user.password);
+        const isSamePassword = await bcrypt.compare(newPassword, userData.password);
         if (isSamePassword) {
             return res.status(400).json({ 
                 success: false, 
@@ -367,10 +191,9 @@ const updatePassword = async (req, res) => {
 
         // Hash and save new password
         const salt = await bcrypt.genSalt(10);
-        user.password = await bcrypt.hash(newPassword, salt);
-        await user.save();
+        userData.password = await bcrypt.hash(newPassword, salt);
+        await userData.save();
 
-        // Generate new token
         const token = createToken(user._id);
 
         res.status(200).json({ 
@@ -399,8 +222,8 @@ const deleteAccount = async (req, res) => {
             });
         }
 
-        const user = await User.findById(userId);
-        if (!user) {
+        const userData = await userModel.findById(userId);
+        if (!userData) {
             return res.status(404).json({ 
                 success: false, 
                 message: "User not found" 
@@ -408,7 +231,7 @@ const deleteAccount = async (req, res) => {
         }
 
         // Verify password
-        const isMatch = await bcrypt.compare(password, user.password);
+        const isMatch = await bcrypt.compare(password, userData.password);
         if (!isMatch) {
             return res.status(401).json({ 
                 success: false, 
@@ -416,7 +239,7 @@ const deleteAccount = async (req, res) => {
             });
         }
 
-        await User.findByIdAndDelete(userId);
+        await userModel.findByIdAndDelete(userId);
         
         res.status(200).json({ 
             success: true, 
@@ -434,9 +257,6 @@ const deleteAccount = async (req, res) => {
 export { 
     getProfile, 
     updateProfile, 
-    addAddress, 
-    updateAddress, 
-    deleteAddress, 
     updatePassword, 
     deleteAccount 
 };

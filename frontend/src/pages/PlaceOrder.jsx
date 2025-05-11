@@ -27,13 +27,11 @@ const PlaceOrder = () => {
   const [cartData, setCartData] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Load addresses from localStorage on component mount
   useEffect(() => {
     const savedAddresses = JSON.parse(localStorage.getItem('addresses')) || [];
     setAddresses(savedAddresses);
   }, []);
 
-  // Save addresses to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem('addresses', JSON.stringify(addresses));
   }, [addresses]);
@@ -62,7 +60,6 @@ const PlaceOrder = () => {
     setCartData(tempData);
   }, [cartItems, products]);
 
-  // Calculate amounts using context functions
   const totalAmount = getTotalCartAmount();
   const discount = totalAmount > 100 ? totalAmount * 0.1 : 0;
   const grandTotal = totalAmount - discount + delivery_fee;
@@ -99,11 +96,10 @@ const PlaceOrder = () => {
     try {
       const address = addresses.find((addr) => addr.id === selectedAddress);
       
-      // Prepare order data according to backend requirements
       const orderData = {
         userId,
         items: cartData.map(item => ({
-          _id: item._id,  // Changed from productId to _id to match backend
+          _id: item._id,
           name: item.name,
           shade: item.shade,
           quantity: item.quantity,
@@ -117,7 +113,7 @@ const PlaceOrder = () => {
         paymentMethod: selectedPayment === 0 ? 'COD' : 'Khalti',
       };
 
-      console.log('Order Data:', orderData); // For debugging
+      console.log('Order Data:', orderData);
 
       let response;
       if (selectedPayment === 1) {
@@ -156,7 +152,13 @@ const PlaceOrder = () => {
   
         const result = await response.json();
         toast.success('Order placed successfully!');
-        setCartItems({});
+        
+        // Clear cart
+        if (typeof setCartItems === 'function') {
+          setCartItems({});
+        }
+        localStorage.removeItem('cart');
+        
         navigate('/orders');
       }
     } catch (error) {
@@ -166,7 +168,6 @@ const PlaceOrder = () => {
       setIsLoading(false);
     }
   };
-
   return (
     <div className='flex flex-col sm:flex-row justify-between gap-6 pt-5 sm:pt-14 min-h-[80vh] border-t px-6'>
       {/* Left Side - Billing Details */}
@@ -376,7 +377,7 @@ const PlaceOrder = () => {
                 Cancel
               </button>
               <button 
-                className='bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600'
+                className='bg-pink-500 text-white px-4 py-2 rounded hover:bg-pink-600'
                 onClick={handleAddAddress}
               >
                 Save Address

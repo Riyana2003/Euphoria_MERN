@@ -1,5 +1,4 @@
-/* eslint-disable no-undef */
-/* eslint-disable no-unused-vars */
+    /* eslint-disable no-unused-vars */
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
@@ -9,19 +8,13 @@ import { ShopContext } from '../context/ShopContext';
 
 const Profile = () => { 
     const [activeTab, setActiveTab] = useState('personal');
-    const { backendUrl} = useContext(ShopContext);
+    const { backendUrl } = useContext(ShopContext);
     const [userData, setUserData] = useState(null);
     const [formData, setFormData] = useState({
         username: '', 
         dateOfBirth: '',
         bloodGroup: '',
         gender: '',
-        addresses: [],
-        newAddress: {
-            type: 'Home',
-            address_details: '',
-            number: ''
-        },
         password: '',
         newPassword: '',
         confirmPassword: '',
@@ -57,8 +50,7 @@ const Profile = () => {
                 username: user.username || '', 
                 dateOfBirth: profile.dateOfBirth?.split('T')[0] || '',
                 bloodGroup: profile.bloodGroup || '',
-                gender: profile.gender || '',
-                addresses: profile.addresses || []
+                gender: profile.gender || ''
             }));
             setIsEditing(false);
         } catch (error) {
@@ -72,47 +64,6 @@ const Profile = () => {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleAddressChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            newAddress: {
-                ...prev.newAddress,
-                [name]: value
-            }
-        }));
-    };
-
-    const handleAddAddress = async () => {
-        try {
-            const userId = localStorage.getItem('user_id');
-            if (!userId) {
-                toast.error('User ID not found. Please login again.');
-                return;
-            }
-
-            const token = localStorage.getItem('authToken');
-            const response = await axios.put(`${backendUrl}/api/profile/address`,
-                formData.newAddress,
-                { headers: { token } }
-            );
-            
-            toast.success('Address added successfully');
-            fetchUserData();
-            setFormData(prev => ({
-                ...prev,
-                newAddress: {
-                    type: 'Home',
-                    address_details: '',
-                    number: ''
-                }
-            }));
-        } catch (error) {
-            console.error("Add address error:", error);
-            toast.error(error.response?.data?.message || 'Failed to add address');
-        }
-    };
-
     const handleSubmitProfile = async (e) => {
         e.preventDefault();
         try {
@@ -122,9 +73,8 @@ const Profile = () => {
                 return;
             }
             
-            // Update profile info
             const response = await axios.put(
-                `${backendUrl}/api/profile`,
+                `${backendUrl}/api/profile/`,
                 {
                     username: formData.username,
                     dateOfBirth: formData.dateOfBirth,
@@ -138,7 +88,6 @@ const Profile = () => {
 
             if (response.data.success) {
                 toast.success('Profile updated successfully');
-                // Update local state with the new data
                 setUserData(response.data.user);
                 setIsEditing(false);
             } else {
@@ -230,15 +179,6 @@ const Profile = () => {
                             className={`px-4 py-2 text-left rounded transition-colors ${activeTab === 'personal' ? 'bg-pink-100 text-pink-500' : 'hover:bg-gray-100'}`}
                         >
                             Personal Information
-                        </button>
-                        <button
-                            onClick={() => {
-                                setActiveTab('address');
-                                setIsEditing(false);
-                            }}
-                            className={`px-4 py-2 text-left rounded transition-colors ${activeTab === 'address' ? 'bg-pink-100 text-pink-500' : 'hover:bg-gray-100'}`}
-                        >
-                            My Addresses
                         </button>
                         <button
                             onClick={() => setActiveTab('password')}
@@ -366,83 +306,6 @@ const Profile = () => {
                                     </div>
                                 </div>
                             )}
-                        </div>
-                    )}
-
-                    {/* Addresses */}
-                    {activeTab === 'address' && (
-                        <div>
-                            <h2 className="text-2xl font-bold mb-6 text-pink-500">My Addresses</h2>
-                            <div className="mb-6">
-                                {formData.addresses.length > 0 ? (
-                                    formData.addresses.map((address, index) => (
-                                        <div key={address._id || index} className="border p-4 rounded-md mb-4 hover:border-pink-300 transition-colors">
-                                            <div className="flex justify-between items-start">
-                                                <div>
-                                                    <p className="font-medium">{address.type}</p>
-                                                    <p>{address.address_details}</p>
-                                                    <p>Contact Number: {address.number}</p>
-                                                </div>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleRemoveAddress(address._id)}
-                                                    className="text-red-600 hover:text-red-800 transition-colors"
-                                                >
-                                                    Remove
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))
-                                ) : (
-                                    <p className="text-gray-500">No addresses saved yet.</p>
-                                )}
-                            </div>
-
-                            <h3 className="text-xl font-semibold mb-4 text-pink-500">Add New Address</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Address Type</label>
-                                    <select
-                                        name="type"
-                                        value={formData.newAddress.type}
-                                        onChange={handleAddressChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-pink-500 focus:border-pink-500"
-                                    >
-                                        <option value="Home">Home</option>
-                                        <option value="Work">Work</option>
-                                        <option value="Other">Other</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Contact Number</label>
-                                    <input
-                                        type="text"
-                                        name="number"
-                                        value={formData.newAddress.number}
-                                        onChange={handleAddressChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-pink-500 focus:border-pink-500"
-                                        required
-                                    />
-                                </div>
-                                <div className="md:col-span-2">
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Address Details</label>
-                                    <textarea
-                                        name="address_details"
-                                        value={formData.newAddress.address_details}
-                                        onChange={handleAddressChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-pink-500 focus:border-pink-500"
-                                        required
-                                        rows="3"
-                                    />
-                                </div>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={handleAddAddress}
-                                className="px-4 py-2 bg-pink-500 text-white rounded-md hover:bg-pink-600 transition-colors"
-                            >
-                                Add Address
-                            </button>
                         </div>
                     )}
 
