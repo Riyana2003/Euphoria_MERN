@@ -10,6 +10,9 @@ import Orders from './pages/Orders';
 import Login from './components/Login';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import HeroManager from './pages/HeroManager';
+
+
 
 export const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000';
 export const currency = 'Rs.'
@@ -44,6 +47,7 @@ const App = () => {
                 <Route path='/add' element={<Add />} />
                 <Route path='/list' element={<List />} />
                 <Route path='/orders' element={<Orders />} />
+                <Route path='/manage' element={<HeroManager />} />
                 <Route path='*' element={<Navigate to='/add' />} />
               </Routes>
             </div>

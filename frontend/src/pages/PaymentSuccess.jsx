@@ -5,7 +5,7 @@ import { toast } from 'react-toastify';
 
 const PaymentSuccess = () => {
   const [searchParams] = useSearchParams();
-  const { backendUrl, token } = useContext(ShopContext) || { backendUrl: 'http://localhost:4000', token: null };
+  const { backendUrl, token, setCartItems } = useContext(ShopContext) || { backendUrl: 'http://localhost:4000', token: null };
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
 
@@ -39,14 +39,22 @@ const PaymentSuccess = () => {
       } catch (error) {
         console.error('Payment verification failed:', error);
         toast.error('Payment verification failed. Please try again.');
-      } finally {
+      } 
+      
+    finally {
+        // Clear cart
+        if (typeof setCartItems === 'function') {
+          setCartItems({});
+        }
+
+        localStorage.removeItem('cart');
         setIsLoading(false);
         navigate('/orders');
       }
     };
 
     verifyPayment();
-  }, [searchParams, navigate, backendUrl, token]);
+  }, [searchParams, navigate, backendUrl, token, setCartItems]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">

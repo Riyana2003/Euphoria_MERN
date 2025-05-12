@@ -134,7 +134,8 @@ const PlaceOrder = () => {
   
         const { paymentUrl } = await response.json();
         window.location.href = paymentUrl;
-      } else {
+      }
+       else {
         // COD payment
         response = await fetch(`${backendUrl}/api/order/place`, {
           method: 'POST',

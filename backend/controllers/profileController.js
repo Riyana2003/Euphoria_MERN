@@ -1,63 +1,10 @@
 import bcrypt from "bcrypt";
 import userModel from "../models/userModel.js";
 
-
-const getProfile = async (req, res) => {
-    try {
-        const userId = req.user._id;
-        console.log('Fetching user profile for ID:', userId);
-        
-        const userData = await userModel.findById(userId)
-            .select('-password -__v -createdAt -updatedAt')
-            .lean();
-
-        console.log('User fetched from database:', userData);
-
-        if (!userData) {
-            console.log('User not found in database');
-            return res.status(404).json({ 
-                success: false, 
-                message: "User not found" 
-            });
-        }
-
-        // Initialize profile with default values if it doesn't exist
-        if (!userData.profile) {
-            console.log('Profile not found, initializing default profile');
-            userData.profile = {
-                dateOfBirth: null,
-                bloodGroup: null,
-                gender: null
-            };
-        }
-
-        // Ensure cartData exists
-        if (!userData.cartData) {
-            console.log('Initializing empty cartData');
-            userData.cartData = {};
-        }
-
-        console.log('Final user object being returned:', userData);
-
-        res.status(200).json({ 
-            success: true, 
-            user: userData,
-            token: createToken(userData._id),
-            userId: userData._id
-        });
-    } catch (error) {
-        console.error("Get profile error:", error);
-        res.status(500).json({ 
-            success: false, 
-            message: "Failed to fetch profile" 
-        });
-    }
-};
-
 const updateProfile = async (req, res) => {
     try {
         const { username, dateOfBirth, bloodGroup, gender } = req.body;
-        const userId = req.user._id;
+        const userId = req.body.userId;
 
         // Validate username if provided
         if (username) {
@@ -81,8 +28,17 @@ const updateProfile = async (req, res) => {
             }
         }
 
+        // Validate dateOfBirth format
+        if (dateOfBirth && isNaN(new Date(dateOfBirth).getTime())) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid date format for date of birth"
+            });
+        }
+
         // Validate bloodGroup against enum values
-        if (bloodGroup && !['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].includes(bloodGroup)) {
+        const validBloodGroups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+        if (bloodGroup && !validBloodGroups.includes(bloodGroup)) {
             return res.status(400).json({ 
                 success: false, 
                 message: "Invalid blood group" 
@@ -90,7 +46,8 @@ const updateProfile = async (req, res) => {
         }
 
         // Validate gender against enum values
-        if (gender && !['Male', 'Female', 'Other'].includes(gender)) {
+        const validGenders = ['Male', 'Female', 'Other'];
+        if (gender && !validGenders.includes(gender)) {
             return res.status(400).json({ 
                 success: false, 
                 message: "Invalid gender" 
@@ -101,7 +58,7 @@ const updateProfile = async (req, res) => {
         const updateData = {
             ...(username && { username: username.toLowerCase() }),
             profile: {
-                ...(dateOfBirth && { dateOfBirth }),
+                ...(dateOfBirth && { dateOfBirth: new Date(dateOfBirth) }), // Ensure proper Date object
                 ...(bloodGroup && { bloodGroup }),
                 ...(gender && { gender })
             }
@@ -114,7 +71,7 @@ const updateProfile = async (req, res) => {
                 new: true,
                 runValidators: true 
             }
-        ).select('-password -__v -createdAt -updatedAt');
+        ).select('-_id -__v -createdAt -updatedAt');
 
         if (!updatedUser) {
             return res.status(404).json({ 
@@ -144,10 +101,9 @@ const updateProfile = async (req, res) => {
 
 const updatePassword = async (req, res) => {
     try {
-        const userId = req.user._id;
+        const userId = req.body.userId;  
         const { currentPassword, newPassword } = req.body;
 
-        // Validate required fields
         if (!currentPassword || !newPassword) {
             return res.status(400).json({ 
                 success: false, 
@@ -155,24 +111,15 @@ const updatePassword = async (req, res) => {
             });
         }
 
-        // Validate password strength
-        if (newPassword.length < 8) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "New password must be at least 8 characters" 
-            });
-        }
-
-        const userData = await userModel.findById(userId);
-        if (!userData) {
+        const user = await userModel.findById(userId);
+        if (!user) {
             return res.status(404).json({ 
                 success: false, 
                 message: "User not found" 
             });
         }
 
-        // Verify current password
-        const isMatch = await bcrypt.compare(currentPassword, userData.password);
+        const isMatch = await bcrypt.compare(currentPassword, user.password);
         if (!isMatch) {
             return res.status(401).json({ 
                 success: false, 
@@ -180,26 +127,13 @@ const updatePassword = async (req, res) => {
             });
         }
 
-        // Check if new password is different
-        const isSamePassword = await bcrypt.compare(newPassword, userData.password);
-        if (isSamePassword) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "New password must be different from current password" 
-            });
-        }
-
-        // Hash and save new password
         const salt = await bcrypt.genSalt(10);
-        userData.password = await bcrypt.hash(newPassword, salt);
-        await userData.save();
-
-        const token = createToken(user._id);
+        user.password = await bcrypt.hash(newPassword, salt);
+        await user.save();
 
         res.status(200).json({ 
             success: true, 
-            message: "Password updated successfully",
-            token 
+            message: "Password updated successfully"
         });
     } catch (error) {
         console.error("Update password error:", error);
@@ -212,7 +146,7 @@ const updatePassword = async (req, res) => {
 
 const deleteAccount = async (req, res) => {
     try {
-        const userId = req.user._id;
+        const userId = req.body.userId;
         const { password } = req.body;
 
         if (!password) {
@@ -222,16 +156,15 @@ const deleteAccount = async (req, res) => {
             });
         }
 
-        const userData = await userModel.findById(userId);
-        if (!userData) {
+        const user = await userModel.findById(userId);
+        if (!user) {
             return res.status(404).json({ 
                 success: false, 
                 message: "User not found" 
             });
         }
 
-        // Verify password
-        const isMatch = await bcrypt.compare(password, userData.password);
+        const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
             return res.status(401).json({ 
                 success: false, 
@@ -255,7 +188,6 @@ const deleteAccount = async (req, res) => {
 };
 
 export { 
-    getProfile, 
     updateProfile, 
     updatePassword, 
     deleteAccount 

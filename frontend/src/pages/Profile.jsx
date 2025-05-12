@@ -37,7 +37,7 @@ const Profile = () => {
             }
 
             const token = localStorage.getItem('authToken');
-            const response = await axios.get(`${backendUrl}/api/profile/`, {
+            const response = await axios.put(`${backendUrl}/api/profile/`, {
                 headers: { token }
             });
       
@@ -99,69 +99,63 @@ const Profile = () => {
         }
     };
 
-    const handleChangePassword = async (e) => {
-        e.preventDefault();
-        
-        if (formData.newPassword !== formData.confirmPassword) {
-            toast.error('Passwords do not match');
-            return;
-        }
+    // Update the password change handler
+const handleChangePassword = async (e) => {
+    e.preventDefault();
     
-        if (formData.newPassword.length < 8) {
-            toast.error('Password must be at least 8 characters');
-            return;
-        }
-    
-        try {
-            const token = localStorage.getItem('authToken');
-            const response = await axios.put(
-                `${backendUrl}/api/profile/password`,
-                {
-                    currentPassword: formData.password,
-                    newPassword: formData.newPassword
-                },
-                {
-                    headers: { token }
-                }
-            );
-    
-            if (response.data.token) {
-                localStorage.setItem('authToken', response.data.token);
-            }
-    
-            setFormData(prev => ({
-                ...prev,
-                password: '',
-                newPassword: '',
-                confirmPassword: ''
-            }));
-    
-            toast.success('Password updated successfully');
-        } catch (error) {
-            console.error('Password update error:', error);
-            toast.error(error.response?.data?.message || 'Failed to update password');
-        }
-    };
+    if (formData.newPassword !== formData.confirmPassword) {
+        toast.error('Passwords do not match');
+        return;
+    }
 
-    const handleDeleteAccount = async (e) => {
-        e.preventDefault();
-        if (!window.confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
-            return;
-        }
-        try {
-            const token = localStorage.getItem('authToken');
-            await axios.put(`${backendUrl}/api/profile/password`, {
-                data: { password: formData.deletePassword },
-                headers: { token }
-            });
-            toast.success('Account deleted successfully');
-            localStorage.removeItem('authToken');
-            navigate('/');
-        } catch (error) {
-            console.error("Delete account error:", error);
-            toast.error(error.response?.data?.message || 'Failed to delete account');
-        }
-    };
+    try {
+        const token = localStorage.getItem('authToken');
+        const response = await axios.put(
+            `${backendUrl}/api/profile/password`,
+            {
+                currentPassword: formData.password,
+                newPassword: formData.newPassword
+            },
+            {
+                headers: { Authorization: `Bearer ${token}` } // Standard format
+            }
+        );
+
+        setFormData(prev => ({
+            ...prev,
+            password: '',
+            newPassword: '',
+            confirmPassword: ''
+        }));
+
+        toast.success(response.data.message || 'Password updated successfully');
+    } catch (error) {
+        console.error('Password update error:', error);
+        toast.error(error.response?.data?.message || 'Failed to update password');
+    }
+};
+
+// Fix the delete account handler
+const handleDeleteAccount = async (e) => {
+    e.preventDefault();
+    if (!window.confirm('Are you sure you want to delete your account?')) return;
+
+    try {
+        const token = localStorage.getItem('authToken');
+        await axios.delete(`${backendUrl}/api/profile`, {
+            data: { password: formData.deletePassword },
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('user_id');
+        toast.success('Account deleted successfully');
+        navigate('/');
+    } catch (error) {
+        console.error("Delete error:", error);
+        toast.error(error.response?.data?.message || 'Failed to delete account');
+    }
+};
 
     if (!userData) return <div className="flex justify-center items-center h-screen">Loading...</div>;
 
