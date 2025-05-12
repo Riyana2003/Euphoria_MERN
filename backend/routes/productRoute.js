@@ -60,7 +60,7 @@ productRouter.use((err, req, res, next) => {
     return res.status(400).json({
       success: false,
       message: err.code === 'LIMIT_FILE_SIZE' 
-        ? 'File too large. Maximum size is 5MB'
+        ? 'File too large. Maximum size is 30MB'
         : 'File upload error'
     });
   }

@@ -179,15 +179,6 @@ const Orders = () => {
                         </span>
                       </div>
                     </div>
-                    
-                    <div className='mt-4 flex justify-end'>
-                      <button 
-                        className='px-4 py-2 border border-pink-500 text-pink-500 rounded-md hover:bg-pink-50 transition-colors'
-                        onClick={() => window.location.href = `/track-order/${item.orderId}`}
-                      >
-                        Track Order
-                      </button>
-                    </div>
                   </div>
                 </div>
               </div>

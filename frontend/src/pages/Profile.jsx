@@ -1,4 +1,4 @@
-/* eslint-disable no-unused-vars */
+    /* eslint-disable no-unused-vars */
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
@@ -8,18 +8,13 @@ import { ShopContext } from '../context/ShopContext';
 
 const Profile = () => { 
     const [activeTab, setActiveTab] = useState('personal');
-    const { products, backendUrl } = useContext(ShopContext);
+    const { backendUrl } = useContext(ShopContext);
     const [userData, setUserData] = useState(null);
     const [formData, setFormData] = useState({
+        username: '', 
         dateOfBirth: '',
         bloodGroup: '',
         gender: '',
-        addresses: [],
-        newAddress: {
-            type: 'Home',
-            address_details: '',
-            number: ''
-        },
         password: '',
         newPassword: '',
         confirmPassword: '',
@@ -34,8 +29,15 @@ const Profile = () => {
 
     const fetchUserData = async () => {
         try {
+            const userId = localStorage.getItem('user_id');
+            if (!userId) {
+                toast.error('User ID not found. Please login again.');
+                navigate('/login');
+                return;
+            }
+
             const token = localStorage.getItem('authToken');
-            const response = await axios.get(`${backendUrl}/api/profile`, {
+            const response = await axios.put(`${backendUrl}/api/profile/`, {
                 headers: { token }
             });
       
@@ -45,10 +47,10 @@ const Profile = () => {
             setUserData(user);
             setFormData(prev => ({
                 ...prev,
+                username: user.username || '', 
                 dateOfBirth: profile.dateOfBirth?.split('T')[0] || '',
                 bloodGroup: profile.bloodGroup || '',
-                gender: profile.gender || '',
-                addresses: profile.addresses || []
+                gender: profile.gender || ''
             }));
             setIsEditing(false);
         } catch (error) {
@@ -62,140 +64,98 @@ const Profile = () => {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleAddressChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            newAddress: {
-                ...prev.newAddress,
-                [name]: value
-            }
-        }));
-    };
-
-    const handleAddAddress = async () => {
-        try {
-            const token = localStorage.getItem('authToken');
-            const response = await axios.post(
-                `${backendUrl}/api/profile/addresses`,
-                formData.newAddress,
-                { headers: { token } }
-            );
-            
-            toast.success('Address added successfully');
-            fetchUserData();
-            // Reset new address form
-            setFormData(prev => ({
-                ...prev,
-                newAddress: {
-                    type: 'Home',
-                    address_details: '',
-                    number: ''
-                }
-            }));
-        } catch (error) {
-            console.error("Add address error:", error);
-            toast.error(error.response?.data?.message || 'Failed to add address');
-        }
-    };
-
-    const handleRemoveAddress = async (addressId) => {
-        try {
-            const token = localStorage.getItem('authToken');
-            await axios.delete(
-                `${backendUrl}/api/profile/addresses/${addressId}`,
-                { headers: { token } }
-            );
-            toast.success('Address removed successfully');
-            fetchUserData();
-        } catch (error) {
-            console.error("Remove address error:", error);
-            toast.error(error.response?.data?.message || 'Failed to remove address');
-        }
-    };
-
     const handleSubmitProfile = async (e) => {
         e.preventDefault();
         try {
             const token = localStorage.getItem('authToken');
-            await axios.put(`${backendUrl}/api/profile`, {
-                dateOfBirth: formData.dateOfBirth,
-                bloodGroup: formData.bloodGroup,
-                gender: formData.gender
-            }, {
-                headers: { token }
-            });
-            toast.success('Profile updated successfully');
-            fetchUserData();
+            if (!token) {
+                toast.error('Authentication token not found');
+                return;
+            }
+            
+            const response = await axios.put(
+                `${backendUrl}/api/profile/`,
+                {
+                    username: formData.username,
+                    dateOfBirth: formData.dateOfBirth,
+                    bloodGroup: formData.bloodGroup,
+                    gender: formData.gender
+                },
+                {
+                    headers: { token }
+                }
+            );
+
+            if (response.data.success) {
+                toast.success('Profile updated successfully');
+                setUserData(response.data.user);
+                setIsEditing(false);
+            } else {
+                toast.error(response.data.message || 'Profile update failed');
+            }
         } catch (error) {
             console.error("Update profile error:", error);
             toast.error(error.response?.data?.message || 'Failed to update profile');
         }
     };
 
-    const handleChangePassword = async (e) => {
-        e.preventDefault();
-        
-        if (formData.newPassword !== formData.confirmPassword) {
-            toast.error('Passwords do not match');
-            return;
-        }
+    // Update the password change handler
+const handleChangePassword = async (e) => {
+    e.preventDefault();
     
-        if (formData.newPassword.length < 8) {
-            toast.error('Password must be at least 8 characters');
-            return;
-        }
-    
-        try {
-            const token = localStorage.getItem('authToken');
-            const response = await axios.put(
-                `${backendUrl}/api/profile/password`,
-                {
-                    currentPassword: formData.password,
-                    newPassword: formData.newPassword
-                },
-                {
-                    headers: { token }
-                }
-            );
-    
-            if (response.data.token) {
-                localStorage.setItem('authToken', response.data.token);
-            }
-    
-            setFormData(prev => ({
-                ...prev,
-                password: '',
-                newPassword: '',
-                confirmPassword: ''
-            }));
-    
-            toast.success('Password updated successfully');
-        } catch (error) {
-            console.error('Password update error:', error);
-            toast.error(error.response?.data?.message || 'Failed to update password');
-        }
-    };
+    if (formData.newPassword !== formData.confirmPassword) {
+        toast.error('Passwords do not match');
+        return;
+    }
 
-    const handleDeleteAccount = async (e) => {
-        e.preventDefault();
-        if (!window.confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
-            return;
-        }
-        try {
-            const token = localStorage.getItem('authToken');
-            await axios.delete(`${backendUrl}/api/profile/delete-account`, {
-                data: { password: formData.deletePassword },
-                headers: { token }
-            });
-            toast.success('Account deleted successfully');
-            localStorage.removeItem('authToken');
-            navigate('/');
-        } catch (error) {
-            console.error("Delete account error:", error);
-            toast.error(error.response?.data?.message || 'Failed to delete account');
-        }
-    };
+    try {
+        const token = localStorage.getItem('authToken');
+        const response = await axios.put(
+            `${backendUrl}/api/profile/password`,
+            {
+                currentPassword: formData.password,
+                newPassword: formData.newPassword
+            },
+            {
+                headers: { Authorization: `Bearer ${token}` } // Standard format
+            }
+        );
+
+        setFormData(prev => ({
+            ...prev,
+            password: '',
+            newPassword: '',
+            confirmPassword: ''
+        }));
+
+        toast.success(response.data.message || 'Password updated successfully');
+    } catch (error) {
+        console.error('Password update error:', error);
+        toast.error(error.response?.data?.message || 'Failed to update password');
+    }
+};
+
+// Fix the delete account handler
+const handleDeleteAccount = async (e) => {
+    e.preventDefault();
+    if (!window.confirm('Are you sure you want to delete your account?')) return;
+
+    try {
+        const token = localStorage.getItem('authToken');
+        await axios.delete(`${backendUrl}/api/profile`, {
+            data: { password: formData.deletePassword },
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('user_id');
+        toast.success('Account deleted successfully');
+        navigate('/');
+    } catch (error) {
+        console.error("Delete error:", error);
+        toast.error(error.response?.data?.message || 'Failed to delete account');
+    }
+};
 
     if (!userData) return <div className="flex justify-center items-center h-screen">Loading...</div>;
 
@@ -213,15 +173,6 @@ const Profile = () => {
                             className={`px-4 py-2 text-left rounded transition-colors ${activeTab === 'personal' ? 'bg-pink-100 text-pink-500' : 'hover:bg-gray-100'}`}
                         >
                             Personal Information
-                        </button>
-                        <button
-                            onClick={() => {
-                                setActiveTab('address');
-                                setIsEditing(false);
-                            }}
-                            className={`px-4 py-2 text-left rounded transition-colors ${activeTab === 'address' ? 'bg-pink-100 text-pink-500' : 'hover:bg-gray-100'}`}
-                        >
-                            My Addresses
                         </button>
                         <button
                             onClick={() => setActiveTab('password')}
@@ -258,6 +209,17 @@ const Profile = () => {
                             {isEditing ? (
                                 <form onSubmit={handleSubmitProfile}>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                        <div className="md:col-span-2">
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                                            <input
+                                                type="text"
+                                                name="username"
+                                                value={formData.username}
+                                                onChange={handleInputChange}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-pink-500 focus:border-pink-500"
+                                                required
+                                            />
+                                        </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
                                             <input
@@ -320,6 +282,10 @@ const Profile = () => {
                                 </form>
                             ) : (
                                 <div className="space-y-4">
+                                     <div className="border-b pb-4">
+                                        <h3 className="text-sm font-medium text-gray-500">Username</h3>
+                                        <p className="mt-1 text-lg">{formData.username || 'Not provided'}</p>
+                                    </div>
                                     <div className="border-b pb-4">
                                         <h3 className="text-sm font-medium text-gray-500">Date of Birth</h3>
                                         <p className="mt-1 text-lg">{formData.dateOfBirth || 'Not provided'}</p>
@@ -334,83 +300,6 @@ const Profile = () => {
                                     </div>
                                 </div>
                             )}
-                        </div>
-                    )}
-
-                    {/* Addresses */}
-                    {activeTab === 'address' && (
-                        <div>
-                            <h2 className="text-2xl font-bold mb-6 text-pink-500">My Addresses</h2>
-                            <div className="mb-6">
-                                {formData.addresses.length > 0 ? (
-                                    formData.addresses.map((address, index) => (
-                                        <div key={address._id || index} className="border p-4 rounded-md mb-4 hover:border-pink-300 transition-colors">
-                                            <div className="flex justify-between items-start">
-                                                <div>
-                                                    <p className="font-medium">{address.type}</p>
-                                                    <p>{address.address_details}</p>
-                                                    <p>Contact Number: {address.number}</p>
-                                                </div>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleRemoveAddress(address._id)}
-                                                    className="text-red-600 hover:text-red-800 transition-colors"
-                                                >
-                                                    Remove
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))
-                                ) : (
-                                    <p className="text-gray-500">No addresses saved yet.</p>
-                                )}
-                            </div>
-
-                            <h3 className="text-xl font-semibold mb-4 text-pink-500">Add New Address</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Address Type</label>
-                                    <select
-                                        name="type"
-                                        value={formData.newAddress.type}
-                                        onChange={handleAddressChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-pink-500 focus:border-pink-500"
-                                    >
-                                        <option value="Home">Home</option>
-                                        <option value="Work">Work</option>
-                                        <option value="Other">Other</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Contact Number</label>
-                                    <input
-                                        type="text"
-                                        name="number"
-                                        value={formData.newAddress.number}
-                                        onChange={handleAddressChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-pink-500 focus:border-pink-500"
-                                        required
-                                    />
-                                </div>
-                                <div className="md:col-span-2">
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Address Details</label>
-                                    <textarea
-                                        name="address_details"
-                                        value={formData.newAddress.address_details}
-                                        onChange={handleAddressChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-pink-500 focus:border-pink-500"
-                                        required
-                                        rows="3"
-                                    />
-                                </div>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={handleAddAddress}
-                                className="px-4 py-2 bg-pink-500 text-white rounded-md hover:bg-pink-600 transition-colors"
-                            >
-                                Add Address
-                            </button>
                         </div>
                     )}
 

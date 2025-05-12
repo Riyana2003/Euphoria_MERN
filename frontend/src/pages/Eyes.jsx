@@ -142,6 +142,12 @@ const Eyes = () => {
             <p className="flex gap-2">
               <input className="w-3" type="checkbox" value={'YSL Beauty'}onChange={toggleBrand}/>YSL BEAUTY
             </p>
+            <p className="flex gap-2">
+              <input className="w-3" type="checkbox" value={'Tarte '}onChange={toggleBrand}/>TARTE
+            </p>
+            <p className="flex gap-2">
+              <input className="w-3" type="checkbox" value={'Two Faced'}onChange={toggleBrand}/>TWO FACED
+            </p>
           </div>
         </div>
         {/*Category Section */}

@@ -174,7 +174,6 @@ const verifyKhaltiPayment = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "Payment verified successfully.",
       order,
     });
   } catch (error) {
