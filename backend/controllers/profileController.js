@@ -6,6 +6,15 @@ const updateProfile = async (req, res) => {
         const { username, dateOfBirth, bloodGroup, gender } = req.body;
         const userId = req.body.userId;
 
+        // First, get the existing user profile
+        const user = await userModel.findById(userId);
+        if (!user) {
+            return res.status(404).json({ 
+                success: false, 
+                message: "User not found" 
+            });
+        }
+
         // Validate username if provided
         if (username) {
             if (username.length < 3 || username.length > 30) {
@@ -54,31 +63,25 @@ const updateProfile = async (req, res) => {
             });
         }
 
-        // Prepare update data
+        // Prepare update data by merging existing profile with new data
         const updateData = {
             ...(username && { username: username.toLowerCase() }),
             profile: {
-                ...(dateOfBirth && { dateOfBirth: new Date(dateOfBirth) }), // Ensure proper Date object
+                ...user.username, // Keep existing profile data
+                ...(dateOfBirth && { dateOfBirth: new Date(dateOfBirth) }),
                 ...(bloodGroup && { bloodGroup }),
                 ...(gender && { gender })
             }
         };
 
         const updatedUser = await userModel.findByIdAndUpdate(
-            userId,
+            username,dateOfBirth,bloodGroup,gender,
             { $set: updateData },
             { 
                 new: true,
                 runValidators: true 
             }
-        ).select('-_id -__v -createdAt -updatedAt');
-
-        if (!updatedUser) {
-            return res.status(404).json({ 
-                success: false, 
-                message: "User not found" 
-            });
-        }
+        ).select('_id -username -profile');
 
         res.status(200).json({ 
             success: true, 

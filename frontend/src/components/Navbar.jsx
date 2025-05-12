@@ -14,10 +14,7 @@ const Navbar = () => {
     searchQuery, 
     setSearchQuery, 
     token, 
-    setToken, 
     getCartCount, 
-    username, 
-    setUsername,
     searchProducts,
     searchResults,
     showSearchResults,
@@ -58,15 +55,17 @@ const Navbar = () => {
     e.preventDefault();
     setSearchQuery(searchInput);
     setShowSearchResults(false);
+    navigate('/search'); // Navigate to search page or handle as needed
   };
 
-  // New function to handle product click with scroll to top
+  // Updated product click handler
   const handleProductClick = (product, e) => {
     e.preventDefault();
+    e.stopPropagation(); // Stop event bubbling
     setSearchInput(product.name);
     setSearchQuery(product.name);
     setShowSearchResults(false);
-    window.scrollTo(0, 0); // Scroll to top before navigation
+    window.scrollTo(0, 0);
     navigate(`/product/${product._id}`);
   };
 
@@ -88,7 +87,7 @@ const Navbar = () => {
     
     toast.success("You have logged out.");
     navigate('/', { replace: true });
-  window.location.reload();
+    window.location.reload();
   };
 
   return (
@@ -132,13 +131,15 @@ const Navbar = () => {
 
               {/* Search Results Dropdown */}
               {showSearchResults && searchResults.length > 0 && (
-                <div className="absolute top-12 left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+                <div 
+                  className="absolute top-12 left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto"
+                  onClick={(e) => e.stopPropagation()} // Prevent dropdown from closing when clicking inside
+                >
                   {searchResults.map((product) => (
-                    <Link
+                    <div
                       key={product._id}
-                      to={`/product/${product._id}`}
                       onClick={(e) => handleProductClick(product, e)}
-                      className="flex items-center p-3 hover:bg-gray-100 border-b border-gray-100"
+                      className="flex items-center p-3 hover:bg-gray-100 border-b border-gray-100 cursor-pointer"
                     >
                       <img 
                         src={product.image[0]} 
@@ -150,7 +151,7 @@ const Navbar = () => {
                         <p className="text-xs text-gray-500">{product.brand}</p>
                       </div>
                       <p className="text-sm font-bold text-pink-500">Rs. {product.price}</p>
-                    </Link>
+                    </div>
                   ))}
                 </div>
               )}
@@ -214,8 +215,8 @@ const Navbar = () => {
         {/* Login Popup */}
         <LoginPopup isOpen={isLoginPopupOpen} onClose={handleCloseLoginPopup} />
 
-        {/* Mobile Search Bar */}
-        <div className="flex sm:hidden px-4 py-2 bg-gray-100">
+         {/* Mobile Search Bar */}
+         <div className="flex sm:hidden px-4 py-2 bg-gray-100">
           <div className="relative w-full" ref={searchRef}>
             <form onSubmit={handleSearchSubmit} className="relative w-full">
               <input
@@ -240,13 +241,15 @@ const Navbar = () => {
 
             {/* Mobile Search Results Dropdown */}
             {showSearchResults && searchResults.length > 0 && (
-              <div className="absolute top-12 left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+              <div 
+                className="absolute top-12 left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
                 {searchResults.map((product) => (
-                  <Link
+                  <div
                     key={product._id}
-                    to={`/product/${product._id}`}
                     onClick={(e) => handleProductClick(product, e)}
-                    className="flex items-center p-3 hover:bg-gray-100 border-b border-gray-100"
+                    className="flex items-center p-3 hover:bg-gray-100 border-b border-gray-100 cursor-pointer"
                   >
                     <img 
                       src={product.image[0]} 
@@ -258,13 +261,12 @@ const Navbar = () => {
                       <p className="text-xs text-gray-500">{product.brand}</p>
                     </div>
                     <p className="text-sm font-bold text-pink-500">Rs. {product.price}</p>
-                  </Link>
+                  </div>
                 ))}
               </div>
             )}
           </div>
         </div>
-
         {/* Mobile Sidebar Menu */}
         <div
           className={`fixed top-0 right-0 bottom-0 bg-white z-50 transition-transform duration-300 ${

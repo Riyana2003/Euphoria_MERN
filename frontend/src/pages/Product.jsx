@@ -20,6 +20,7 @@ const Product = () => {
   const [selectedShade, setSelectedShade] = useState(null);
   const [selectedModel, setSelectedModel] = useState('model1');
   const [selectedLipColor, setSelectedLipColor] = useState('beige');
+  const [selectedBlushColor, setSelectedBlushColor] = useState('unsweetend');
   const [selectedEyeColor, setSelectedEyeColor] = useState('laguna');
   const [isLoading, setIsLoading] = useState(true);
 
@@ -255,7 +256,8 @@ const Product = () => {
   </button>
 
   {((productData.category === 'Lips' && (productData.brand === 'Dior' || productData.brand === 'Bobbi Brown')) || 
-   (productData.category === 'Eyes' && productData.brand === 'Tomford Beauty')) && (
+   (productData.category === 'Eyes' && productData.brand === 'Tomford Beauty')||
+   (productData.category === 'Face' && productData.brand === 'Huda Beauty')) && (
     <button
       onClick={() => setShowTryOnPopup(true)}
       className="flex items-center justify-center bg-pink-600 text-white px-6 py-3 rounded-lg shadow-md border border-pink-600 hover:bg-pink-700 transition-colors flex-1"
@@ -349,6 +351,8 @@ const Product = () => {
           setSelectedLipColor={setSelectedLipColor}
           selectedEyeColor={selectedEyeColor}
           setSelectedEyeColor={setSelectedEyeColor}
+          selectedBlushColor={selectedBlushColor}
+          setSelectedBlushColor={setSelectedBlushColor}
         />
       )}
     </div>
