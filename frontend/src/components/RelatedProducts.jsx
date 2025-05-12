@@ -7,7 +7,7 @@ import { ShopContext } from '../context/ShopContext'
 import { useEffect } from 'react';
 import ProductItem from './ProductItem';
 
-const RelatedProducts = ({brand,category}) => {
+const RelatedProducts = ({category}) => {
 
     const{products} = useContext(ShopContext);
     const[related,setRelated] = useState([]);
@@ -15,10 +15,9 @@ const RelatedProducts = ({brand,category}) => {
     useEffect(()=>{
         if(products.length > 0){
             let productsCopy =  products.slice();
-            productsCopy = productsCopy.filter((item)=> brand === item.brand);
             productsCopy = productsCopy.filter((item)=> category === item.category);
 
-            setRelated(productsCopy.slice(0,5));
+            setRelated(productsCopy.slice(0,4));
 
         }
 

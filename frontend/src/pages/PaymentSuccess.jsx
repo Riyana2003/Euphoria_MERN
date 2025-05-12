@@ -1,20 +1,19 @@
-import { useEffect, useContext } from 'react';
+import { useEffect, useContext, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ShopContext } from '../context/ShopContext';
 import { toast } from 'react-toastify';
 
 const PaymentSuccess = () => {
   const [searchParams] = useSearchParams();
-  const { backendUrl, token } = useContext(ShopContext)|| 'http://localhost:4000';
+  const { backendUrl, token, setCartItems } = useContext(ShopContext) || { backendUrl: 'http://localhost:4000', token: null };
   const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const verifyPayment = async () => {
       const pidx = searchParams.get('pidx');
-      const orderId = searchParams.get('orderId');
 
-      // Validate pidx and orderId
-      if (!pidx || !orderId) {
+      if (!pidx) {
         toast.error('Invalid payment details. Please try again.');
         navigate('/orders');
         return;
@@ -25,34 +24,52 @@ const PaymentSuccess = () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${token || localStorage.getItem('token')}`,
+            Authorization: `Bearer ${token || localStorage.getItem('authToken')}`,
           },
-          body: JSON.stringify({ pidx, orderId }),
+          body: JSON.stringify({ pidx }),
         });
+
         const result = await response.json();
 
         if (response.ok && result.success) {
           toast.success('Payment verified successfully!');
-          navigate('/orders');
         } else {
           toast.error(result.message || 'Payment verification failed');
-          navigate('/orders');
         }
       } catch (error) {
         console.error('Payment verification failed:', error);
-        toast.error('Payment verification failed');
+        toast.error('Payment verification failed. Please try again.');
+      } 
+      
+    finally {
+        // Clear cart
+        if (typeof setCartItems === 'function') {
+          setCartItems({});
+        }
+
+        localStorage.removeItem('cart');
+        setIsLoading(false);
         navigate('/orders');
       }
     };
 
     verifyPayment();
-  }, [searchParams, navigate, backendUrl, token]);
+  }, [searchParams, navigate, backendUrl, token, setCartItems]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="bg-white p-8 rounded-lg shadow-lg text-center">
-        <h1 className="text-2xl font-bold mb-4">Processing Payment...</h1>
-        <p className="text-gray-600">Please wait while we confirm your payment</p>
+        {isLoading ? (
+          <>
+            <h1 className="text-2xl font-bold mb-4">Processing Payment...</h1>
+            <p className="text-gray-600">Please wait while we confirm your payment</p>
+          </>
+        ) : (
+          <>
+            <h1 className="text-2xl font-bold mb-4">Payment Verified</h1>
+            <p className="text-gray-600">Your payment has been successfully verified.</p>
+          </>
+        )}
       </div>
     </div>
   );

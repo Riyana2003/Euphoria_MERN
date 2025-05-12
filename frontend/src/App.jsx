@@ -13,13 +13,13 @@ import LoginPopup from './components/LoginPopup'
 import Orders from './pages/Orders'
 import PlaceOrder from './pages/PlaceOrder'
 import Navbar from './components/Navbar'
-import NotificationPopup from './components/NotificationPopup'
 import Footer from './components/Footer'
 import { toast, ToastContainer } from "react-toastify"; // Import ToastContainer
 import 'react-toastify/dist/ReactToastify.css'; // Import toast CSS
 import Contact from './pages/Contact'
 import Chatbot from './components/Chatbot'
 import PaymentSuccess from './pages/PaymentSuccess';
+import Profile from './pages/Profile'
 
 const App = () => {
   return (
@@ -37,10 +37,10 @@ const App = () => {
         <Route path='/product/:productId' element={<Product/>}/>
         <Route path='/cart' element={<Cart/>}/>
         <Route path='/login' element={<LoginPopup/>}/>
+        <Route path='/profile' element={<Profile/>}/>
         <Route path='/orders' element={<Orders/>}/>
         <Route path='/place-order' element={<PlaceOrder/>}/>
         <Route path="/payment-success" element={<PaymentSuccess />} />
-        <Route path='/notifications' element={<NotificationPopup/>}/> 
         </Routes>  
         <Chatbot  />  
         <Footer />  

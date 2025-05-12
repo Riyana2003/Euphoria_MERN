@@ -30,9 +30,7 @@ const Trending = () => {
       {/* Title and View All */}
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl sm:text-3xl font-bold text-gray-800">Trending</h2>
-        <button className="text-pink-600 hover:underline text-sm sm:text-base font-medium">
-          View All
-        </button>
+        
       </div>
 
       {/* Product Slider */}

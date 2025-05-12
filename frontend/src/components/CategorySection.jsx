@@ -30,6 +30,11 @@ const categories = [
 const CategorySection = () => {
   const navigate = useNavigate();
 
+  const handleCategoryClick = (path) => {
+    navigate(path);
+    window.scrollTo(0, 0);
+  };
+
   return (
     <div className="my-10 w-full mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
       {/* Title and View All */}
@@ -43,7 +48,7 @@ const CategorySection = () => {
           <div 
             key={category.id} 
             className="relative group cursor-pointer" 
-            onClick={() => navigate(category.path)}
+            onClick={() => handleCategoryClick(category.path)}
           >
             <img
               src={category.image}
@@ -58,8 +63,8 @@ const CategorySection = () => {
                 <button 
                   className="mt-2 px-4 py-2 bg-pink-600 text-white text-sm font-medium rounded hover:bg-pink-700 transition"
                   onClick={(e) => {
-                    e.stopPropagation(); // Prevents parent div click from firing
-                    navigate(category.path);
+                    e.stopPropagation();
+                    handleCategoryClick(category.path);
                   }}
                 >
                   {category.buttonText}
