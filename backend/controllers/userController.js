@@ -2,109 +2,280 @@ import validator from "validator";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import userModel from "../models/userModel.js";
+import otpGenerator from "otp-generator";
+import nodemailer from "nodemailer";
 
 // Function to create a JWT token
 const createToken = (id) => {
     return jwt.sign({ id }, process.env.JWT_SECRET);
 };
 
-// Route for user login
+// Email transporter configuration
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false,
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASSWORD,
+    },
+    tls: {
+        rejectUnauthorized: false,
+    },
+});
+
+// Store OTPs temporarily
+const otpStorage = new Map();
+
+// Route for user login with OTP
 const loginUser = async (req, res) => {
     try {
-        const { mobile, password } = req.body;
+        const { email, password, otp } = req.body;
 
-        // Check if mobile and password are provided
-        if (!mobile || !password) {
-            return res.status(400).json({ success: false, message: "Mobile and password are required" });
+        // Validate inputs
+        if (!email || !password) {
+            return res.status(400).json({ success: false, message: "Email and password are required" });
         }
 
-        // Find the user by mobile number
-        const user = await userModel.findOne({ mobile });
+        // Find user
+        const user = await userModel.findOne({ email });
         if (!user) {
-            return res.status(401).json({ success: false, message: "User doesn't exist" });
+            return res.status(401).json({ success: false, message: "Invalid credentials" });
         }
 
-        // Compare the provided password with the hashed password in the database
+        // Verify password
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
             return res.status(401).json({ success: false, message: "Invalid credentials" });
         }
 
-        // Generate a token for the user
-        const token = createToken(user._id);
+        // If OTP is provided, verify it
+        if (otp) {
+            const storedOtp = otpStorage.get(email);
+            if (!storedOtp || storedOtp !== otp) {
+                return res.status(401).json({ success: false, message: "Invalid OTP" });
+            }
+            otpStorage.delete(email);
+            
+            // Generate token
+            const token = createToken(user._id);
+            return res.status(200).json({ success: true, token, userId: user._id });
+        }
 
-        // Return success response with token and user ID
-        res.status(200).json({ success: true, token, userId: user._id });
+        // If no OTP, indicate it's required
+        return res.status(202).json({ 
+            success: true, 
+            message: "Password verified. OTP required." 
+        });
+
     } catch (error) {
         console.error(error);
         res.status(500).json({ success: false, message: "Internal server error" });
     }
 };
 
-// Route for user registration
+// Route to send login OTP (after password verification)
+
+const sendLoginOtp = async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        console.log("Login attempt for:", email); // Debug log
+
+        if (!email || !password) {
+            return res.status(400).json({ message: "Email and password required" });
+        }
+
+        const user = await userModel.findOne({ email });
+        console.log("Found user:", user); // Debug log
+
+        if (!user) {
+            console.log("User not found"); // Debug log
+            return res.status(401).json({ message: "Invalid credentials" });
+        }
+
+        if (!user.password) {
+            console.log("User has no password set"); // Debug log
+            return res.status(401).json({ message: "Invalid credentials" });
+        }
+
+        console.log("Comparing passwords..."); // Debug log
+        const isMatch = await bcrypt.compare(password, user.password);
+        console.log("Password match:", isMatch); // Debug log
+
+        if (!isMatch) {
+            return res.status(401).json({ message: "Invalid credentials" });
+        }
+        
+        // Generate OTP
+        const otp = otpGenerator.generate(6, {
+            digits: true,
+            lowerCaseAlphabets: false,
+            upperCaseAlphabets: false,
+            specialChars: false
+        });
+
+        // Store OTP
+        otpStorage.set(email, otp);
+
+        // Send OTP email
+        await transporter.sendMail({
+            from: process.env.EMAIL_USER,
+            to: email,
+            subject: 'Your Login OTP',
+            text: `Your OTP is: ${otp}`,
+            html: `<h2>Your One-Time Password</h2>
+    
+    <p>Hello valued Euphoria customer,</p>
+    
+    <p>We received a request to log in to your account. Please use the following OTP to complete your login:</p>
+    
+    <div class="otp-container">
+        <div class="otp-code">{${otp}}</div>
+    </div>
+    
+    <p>If you didn't request this OTP, please ignore this email or contact our support team immediately.</p>`
+        });
+
+        res.status(200).json({ success: true, message: "OTP sent successfully" });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: "Failed to send OTP" });
+    }
+};
+
+// Route for user registration with OTP verification
 const registerUser = async (req, res) => {
     try {
-        const { username, mobile, password, confirm_password } = req.body;
+        const { username, email, password, confirm_password, otp } = req.body;
 
-        // Ensure all fields are present
-        if (!username || !mobile || !password || !confirm_password) {
+        // Validate inputs
+        if (!username || !email || !password || !confirm_password || !otp) {
             return res.status(400).json({ success: false, message: "All fields are required" });
         }
 
-        // Check if the user already exists
-        const exists = await userModel.findOne({ mobile });
+        // Validate email
+        if (!validator.isEmail(email)) {
+            return res.status(400).json({ success: false, message: "Invalid email format" });
+        }
+
+        // Check if user exists
+        const exists = await userModel.findOne({ email });
         if (exists) {
-            return res.status(409).json({ success: false, message: "User already exists" });
+            return res.status(409).json({ success: false, message: "Email already registered" });
         }
 
-        // Validate mobile number
-        if (!validator.isMobilePhone(mobile)) {
-            return res.status(400).json({ success: false, message: "Please enter a valid mobile number" });
+        // Verify OTP
+        const storedOtp = otpStorage.get(email);
+        if (!storedOtp || storedOtp !== otp) {
+            return res.status(401).json({ success: false, message: "Invalid OTP" });
         }
 
-        // Validate password strength
+        // Validate password
         if (password.length < 8) {
-            return res.status(400).json({ success: false, message: "Password must be at least 8 characters long" });
+            return res.status(400).json({ success: false, message: "Password must be at least 8 characters" });
         }
 
-        // Validate confirm_password
         if (password !== confirm_password) {
             return res.status(400).json({ success: false, message: "Passwords do not match" });
         }
 
-        // Hash the password
+        // Hash password and create user
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-        // Save new user to the database
         const newUser = new userModel({
             username,
-            mobile,
+            email,
             password: hashedPassword,
-            confirm_password: hashedPassword,
         });
 
         const user = await newUser.save();
+        otpStorage.delete(email);
 
-        // Generate a token for the user
+        // Generate token
         const token = createToken(user._id);
-
-        // Return success response with token
         res.status(201).json({ success: true, token });
+
     } catch (error) {
         console.error(error);
         res.status(500).json({ success: false, message: "Internal server error" });
     }
 };
 
-// Route for admin login
+// Route to send registration OTP (after initial validation)
+const sendRegistrationOtp = async (req, res) => {
+    try {
+        const { username, email, password, confirm_password } = req.body;
+
+        // Initial validation
+        if (!username || !email || !password || !confirm_password) {
+            return res.status(400).json({ success: false, message: "All fields are required" });
+        }
+
+        if (!validator.isEmail(email)) {
+            return res.status(400).json({ success: false, message: "Invalid email format" });
+        }
+
+        if (password.length < 8) {
+            return res.status(400).json({ success: false, message: "Password must be at least 8 characters" });
+        }
+
+        if (password !== confirm_password) {
+            return res.status(400).json({ success: false, message: "Passwords do not match" });
+        }
+
+        // Check if user exists
+        const exists = await userModel.findOne({ email });
+        if (exists) {
+            return res.status(409).json({ success: false, message: "Email already registered" });
+        }
+
+        // Generate and send OTP
+        const otp = otpGenerator.generate(6, {
+            digits: true,
+            lowerCaseAlphabets: false,
+            upperCaseAlphabets: false,
+            specialChars: false
+        });
+
+        otpStorage.set(email, otp);
+
+        await transporter.sendMail({
+            from: process.env.EMAIL_USER,
+            to: email,
+            subject: 'Your Registration OTP',
+            text: `Your OTP is: ${otp}`,
+            html: `<h2>Your One-Time Password</h2>
+    
+    <p>Hello valued Euphoria customer,</p>
+    
+    <p>We received a request to register to your account. Please use the following OTP to complete your registration:</p>
+    
+    <div class="otp-container">
+        <div class="otp-code">{${otp}}</div>
+        
+    </div>
+    
+    <p>If you didn't request this OTP, please ignore this email or contact our support team immediately.</p>`
+        });
+
+        res.status(200).json({ success: true, message: "OTP sent successfully" });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: "Failed to send OTP" });
+    }
+};
+
+// Admin login route
 const adminLogin = async (req, res) => {
     try {
-        const { mobile, password } = req.body;
+        const { email, password } = req.body;
 
-        // Check if mobile and password match admin credentials
-        if (mobile === process.env.ADMIN_MOBILE && password === process.env.ADMIN_PASSWORD) {
-            const token = jwt.sign(mobile + password, process.env.JWT_SECRET);
+        if (email === process.env.ADMIN_EMAIL && password === process.env.ADMIN_PASSWORD) {
+            const token = jwt.sign(email + password, process.env.JWT_SECRET);
             res.status(200).json({ success: true, token });
         } else {
             res.status(401).json({ success: false, message: "Invalid credentials" });
@@ -115,5 +286,4 @@ const adminLogin = async (req, res) => {
     }
 };
 
-// Exporting the routes
-export { loginUser, registerUser, adminLogin };
+export { loginUser, registerUser, adminLogin, sendLoginOtp, sendRegistrationOtp };
