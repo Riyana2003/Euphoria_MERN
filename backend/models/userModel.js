@@ -34,7 +34,7 @@ const userSchema = new mongoose.Schema({
     profile: {
         dateOfBirth: { 
             type: Date, 
-            default: null
+            default: null,
         },
         bloodGroup: { 
             type: String, 

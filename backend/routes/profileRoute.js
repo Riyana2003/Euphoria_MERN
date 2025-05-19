@@ -2,17 +2,18 @@ import express from 'express';
 import {
     updateProfile,
     updatePassword,
+    getProfile,
     deleteAccount
 } from '../controllers/profileController.js';
 import authUser from '../middleware/auth.js';
 
 const profileRouter = express.Router();
 
-// Apply auth middleware to all routes
-profileRouter.use(authUser);
 
-profileRouter.put('/update', updateProfile);
-profileRouter.put('/password', updatePassword);
-profileRouter.delete('/', deleteAccount); 
+
+profileRouter.get('/get', authUser, getProfile);
+profileRouter.post('/update', authUser, updateProfile);
+profileRouter.put('/password',authUser, updatePassword);
+profileRouter.delete('/', authUser, deleteAccount); 
 
 export default profileRouter;

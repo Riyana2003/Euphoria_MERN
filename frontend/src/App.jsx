@@ -20,6 +20,11 @@ import Contact from './pages/Contact'
 import Chatbot from './components/Chatbot'
 import PaymentSuccess from './pages/PaymentSuccess';
 import Profile from './pages/Profile'
+import Shipping from './pages/Shipping'
+import Terms from './pages/Terms'
+import Privacy from './pages/Privacy'
+import Returns from './pages/Returns'
+import FAQ from './pages/FAQ'
 
 const App = () => {
   return (
@@ -34,6 +39,11 @@ const App = () => {
         <Route path='/tools & makeup sets' element={<Tools/>}/>
         <Route path='/about' element={<About/>}/>
         <Route path='/contact' element={<Contact/>}/>
+        <Route path='/shipping' element={<Shipping/>}/>
+        <Route path='/terms' element={<Terms/>}/>
+        <Route path='/privacy' element={<Privacy/>}/>
+        <Route path='/returns' element={<Returns/>}/>
+        <Route path='/faq' element={<FAQ/>}/>
         <Route path='/product/:productId' element={<Product/>}/>
         <Route path='/cart' element={<Cart/>}/>
         <Route path='/login' element={<LoginPopup/>}/>

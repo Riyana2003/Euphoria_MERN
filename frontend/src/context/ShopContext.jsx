@@ -95,54 +95,67 @@ const ShopContextProvider = (props) => {
     return true;
   };
 
-  const addToCart = async (itemId, shadeName, quantity) => {
-    if (!shadeName) {
-      toast.error("Please select a shade");
-      return;
-    }
+const addToCart = async (itemId, shadeName, quantity) => {
+  if (!token) {
+    toast.error("Please login to add items to your cart");
+    return;
+  }
 
-    if (!quantity || quantity <= 0) {
-      toast.error("Please select a valid quantity");
-      return;
-    }
+  if (!quantity || quantity <= 0) {
+    toast.error("Please select a valid quantity");
+    return;
+  }
 
-    if (!validateShade(itemId, shadeName)) {
-      return;
-    }
+  const product = findProductById(itemId);
+  if (!product) {
+    toast.error("Product not found");
+    return;
+  }
 
-    const product = findProductById(itemId);
-    const shadeInfo = product.shades.find(shade => shade.name === shadeName);
+  // Check if shade is required (not a tool)
+  if (product.category !== 'Tools' && !shadeName) {
+    toast.error("Please select a shade");
+    return;
+  }
 
-    setCartItems(prev => {
-      const newCart = { ...prev };
-      if (!newCart[itemId]) newCart[itemId] = {};
-      
-      newCart[itemId][shadeName] = {
-        quantity: (newCart[itemId][shadeName]?.quantity || 0) + quantity,
-        shadeData: shadeInfo
-      };
-      
-      return newCart;
-    });
+  // For tools, we'll use a default shade name if not provided
+  const finalShadeName = shadeName || (product.category === 'Tools' ? 'Default' : null);
 
-    if (token) {
-      try {
-        await axios.post(
-          `${backendUrl}/api/cart/add`, 
-          { itemId, shade: shadeName, quantity }, 
-          {
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
-          }
-        );
-        toast.success("Item added to cart successfully!");
-      } catch (error) {
-        console.error("Error adding item to cart:", error);
-        toast.error(error.response?.data?.message || "Failed to add item to cart");
+  // Validate shade only if it's required and provided
+  if (product.category !== 'Tools' && finalShadeName && !validateShade(itemId, finalShadeName)) {
+    return;
+  }
+
+  const shadeInfo = product.shades?.find(shade => shade.name === finalShadeName) || {};
+
+  setCartItems(prev => {
+    const newCart = { ...prev };
+    if (!newCart[itemId]) newCart[itemId] = {};
+    
+    newCart[itemId][finalShadeName] = {
+      quantity: (newCart[itemId][finalShadeName]?.quantity || 0) + quantity,
+      shadeData: shadeInfo
+    };
+    
+    return newCart;
+  });
+
+  try {
+    await axios.post(
+      `${backendUrl}/api/cart/add`, 
+      { itemId, shade: finalShadeName, quantity }, 
+      {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
       }
-    }
-  };
+    );
+    toast.success("Item added to cart successfully!");
+  } catch (error) {
+    console.error("Error adding item to cart:", error);
+    toast.error(error.response?.data?.message || "Failed to add item to cart");
+  }
+};
 
   const updateCart = async (itemId, shadeName, newQuantity) => {
     if (newQuantity <= 0) {
