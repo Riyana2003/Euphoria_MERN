@@ -8,7 +8,7 @@
   import cartRouter from './routes/cartRoute.js';
   import orderRouter from './routes/orderRoute.js';
   import profileRouter from './routes/profileRoute.js';
-import router from './routes/heroRoute.js';
+import heroRouter from './routes/heroRoute.js';
 
   // App Config
   const app = express();
@@ -29,7 +29,7 @@ import router from './routes/heroRoute.js';
   app.use('/api/cart', cartRouter);
   app.use('/api/order', orderRouter);
   app.use('/api/profile', profileRouter);
-  app.use('api/hero', router )
+  app.use('/api/hero', heroRouter )
 
   // Default Route
   app.get('/', (req, res) => {

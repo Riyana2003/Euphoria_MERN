@@ -9,14 +9,23 @@ const userSchema = new mongoose.Schema({
         minlength: 3,
         maxlength: 30
     },
-    mobile: { 
+    email: { 
         type: String, 
         required: true, 
-        unique: true 
+        unique: true,
+        trim: true,
+        lowercase: true,
+        validate: {
+            validator: (value) => {
+                return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+            },
+            message: props => `${props.value} is not a valid email address!`
+        }
     },
     password: { 
         type: String, 
-        required: true 
+        required: true,
+        minlength: 8,
     },
     cartData: { 
         type: Object, 
@@ -37,11 +46,13 @@ const userSchema = new mongoose.Schema({
             default: null,
             enum: ['Male', 'Female', 'Other'] 
         }
-    }
+    },
+   
 }, { 
     minimize: false, 
     timestamps: true 
 });
+
 
 const userModel = mongoose.models.user || mongoose.model('user', userSchema);
 export default userModel;

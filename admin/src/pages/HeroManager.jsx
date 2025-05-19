@@ -1,10 +1,9 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { assets } from '../assets/assets';
-import { backendUrl } from '../App';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { backendUrl } from '../App';
 
 const HeroManager = () => {
   const [heroImages, setHeroImages] = useState([]);
@@ -13,11 +12,11 @@ const HeroManager = () => {
     price: '',
     buttonText: 'SHOP NOW',
     isActive: true,
-    order: 0,
     image: null
   });
   const [editingId, setEditingId] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [imagePreview, setImagePreview] = useState(null);
 
   useEffect(() => {
     fetchHeroImages();
@@ -25,11 +24,11 @@ const HeroManager = () => {
 
   const fetchHeroImages = async () => {
     try {
-      const response = await axios.post(`${backendUrl}/api/hero`);
+      const response = await axios.get(`${backendUrl}/api/hero`);
       setHeroImages(response.data);
     } catch (error) {
-      console.error('Error fetching hero images:', error);
       toast.error('Failed to fetch hero images');
+      console.error('Error:', error);
     }
   };
 
@@ -42,10 +41,11 @@ const HeroManager = () => {
   };
 
   const handleFileChange = (e) => {
-    setFormData({
-      ...formData,
-      image: e.target.files[0]
-    });
+    const file = e.target.files[0];
+    if (file) {
+      setFormData({ ...formData, image: file });
+      setImagePreview(URL.createObjectURL(file));
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -57,32 +57,25 @@ const HeroManager = () => {
     data.append('price', formData.price);
     data.append('buttonText', formData.buttonText);
     data.append('isActive', formData.isActive);
-    data.append('order', formData.order);
-    if (formData.image) {
-      data.append('image', formData.image);
-    }
+    if (formData.image) data.append('image', formData.image);
 
     try {
       if (editingId) {
-        await axios.put(`${backendUrl}/api/hero/:id`, data, {
-          headers: {
-            'Content-Type': 'multipart/form-data'
-          }
+        await axios.put(`${backendUrl}/api/hero/${editingId}`, data, {
+          headers: { 'Content-Type': 'multipart/form-data' }
         });
         toast.success('Hero image updated successfully');
       } else {
         await axios.post(`${backendUrl}/api/hero`, data, {
-          headers: {
-            'Content-Type': 'multipart/form-data'
-          }
+          headers: { 'Content-Type': 'multipart/form-data' }
         });
         toast.success('Hero image added successfully');
       }
       resetForm();
       fetchHeroImages();
     } catch (error) {
-      console.error('Error saving hero image:', error);
       toast.error(error.response?.data?.message || 'Failed to save hero image');
+      console.error('Error:', error);
     } finally {
       setIsLoading(false);
     }
@@ -94,10 +87,10 @@ const HeroManager = () => {
       price: '',
       buttonText: 'SHOP NOW',
       isActive: true,
-      order: 0,
       image: null
     });
     setEditingId(null);
+    setImagePreview(null);
   };
 
   const editImage = (image) => {
@@ -106,28 +99,28 @@ const HeroManager = () => {
       price: image.price,
       buttonText: image.buttonText,
       isActive: image.isActive,
-      order: image.order,
       image: null
     });
     setEditingId(image._id);
+    setImagePreview(null);
   };
 
   const deleteImage = async (id) => {
     if (window.confirm('Are you sure you want to delete this hero image?')) {
       try {
-        await axios.delete(`${backendUrl}/api/hero/:id`);
+        await axios.delete(`${backendUrl}/api/hero/${id}`);
         toast.success('Hero image deleted successfully');
         fetchHeroImages();
       } catch (error) {
-        console.error('Error deleting hero image:', error);
         toast.error('Failed to delete hero image');
+        console.error('Error:', error);
       }
     }
   };
 
   return (
     <div className="p-6 bg-white rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold mb-6">Manage Hero Images</h2>
+      <h2 className="text-2xl font-bold mb-6">Manage Hero Banners</h2>
       
       <form onSubmit={handleSubmit} className="mb-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -165,18 +158,7 @@ const HeroManager = () => {
               className="w-full p-2 border border-gray-300 rounded-md"
             />
           </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Order</label>
-            <input
-              type="number"
-              name="order"
-              value={formData.order}
-              onChange={handleInputChange}
-              className="w-full p-2 border border-gray-300 rounded-md"
-              min="0"
-            />
-          </div>
+    
           
           <div className="flex items-center">
             <input
@@ -191,7 +173,7 @@ const HeroManager = () => {
           
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              {editingId ? 'Replace Image (leave blank to keep current)' : 'Image*'}
+              {editingId ? 'Replace Image' : 'Image*'}
             </label>
             <input
               type="file"
@@ -201,6 +183,15 @@ const HeroManager = () => {
               accept="image/*"
               required={!editingId}
             />
+            {imagePreview && (
+              <div className="mt-2">
+                <img 
+                  src={imagePreview} 
+                  alt="Preview" 
+                  className="h-20 w-32 object-cover rounded border"
+                />
+              </div>
+            )}
           </div>
         </div>
         
@@ -210,7 +201,7 @@ const HeroManager = () => {
             disabled={isLoading}
             className="px-4 py-2 bg-pink-500 text-white rounded-md hover:bg-pink-600 disabled:opacity-50"
           >
-            {isLoading ? 'Saving...' : editingId ? 'Update Image' : 'Add Image'}
+            {isLoading ? 'Saving...' : editingId ? 'Update Banner' : 'Add Banner'}
           </button>
           
           {editingId && (
@@ -226,17 +217,17 @@ const HeroManager = () => {
       </form>
       
       <div className="border-t pt-6">
-        <h3 className="text-xl font-semibold mb-4">Current Hero Images</h3>
+        <h3 className="text-xl font-semibold mb-4">Current Hero Banners</h3>
         
         {heroImages.length === 0 ? (
-          <p className="text-gray-500">No hero images added yet.</p>
+          <p className="text-gray-500">No hero banners added yet.</p>
         ) : (
           <div className="space-y-4">
-            {heroImages.map((image) => (
+            {heroImages.sort((a, b) => a.order - b.order).map((image) => (
               <div key={image._id} className="flex items-center p-4 border rounded-lg">
                 <div className="flex-shrink-0 mr-4">
                   <img
-                    src={`${backendUrl}${image.imageUrl}`}
+                    src={image.imageUrl}
                     alt={image.title}
                     className="h-20 w-32 object-cover rounded"
                   />
@@ -245,7 +236,8 @@ const HeroManager = () => {
                 <div className="flex-grow">
                   <h4 className="font-medium">{image.title}</h4>
                   <p className="text-sm text-gray-600">{image.price}</p>
-                  <p className="text-sm">Order: {image.order} | Status: 
+                  <p className="text-sm">
+                    Order: {image.order} | Status: 
                     <span className={image.isActive ? "text-green-600" : "text-red-600"}>
                       {image.isActive ? ' Active' : ' Inactive'}
                     </span>
@@ -257,14 +249,14 @@ const HeroManager = () => {
                     onClick={() => editImage(image)}
                     className="p-2 text-pink-500 hover:text-pink-600"
                   >
-                    <img src={assets.edit_icon} alt="Edit" className="h-5 w-5" />
+                    Edit
                   </button>
                   
                   <button
                     onClick={() => deleteImage(image._id)}
                     className="p-2 text-red-600 hover:text-red-800"
                   >
-                    <img src={assets.delete_icon} alt="Delete" className="h-5 w-5" />
+                    Delete
                   </button>
                 </div>
               </div>

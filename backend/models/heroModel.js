@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
-const HeroImageSchema = new mongoose.Schema({
+
+const heroSchema = new mongoose.Schema({
   title: {
     type: String,
     required: true
@@ -10,7 +11,7 @@ const HeroImageSchema = new mongoose.Schema({
   },
   buttonText: {
     type: String,
-    required: true
+    default: 'SHOP NOW'
   },
   imageUrl: {
     type: String,
@@ -20,16 +21,12 @@ const HeroImageSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
-  order: {
-    type: Number,
-    default: 0
-  },
   createdAt: {
     type: Date,
     default: Date.now
   }
 });
 
-const HeroImage = mongoose.model('HeroImage', HeroImageSchema);
-  
-  export default HeroImage;
+const HeroImage = mongoose.model('HeroImage', heroSchema);
+
+export default HeroImage;

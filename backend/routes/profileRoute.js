@@ -11,7 +11,7 @@ const profileRouter = express.Router();
 // Apply auth middleware to all routes
 profileRouter.use(authUser);
 
-profileRouter.put('/', updateProfile);
+profileRouter.put('/update', updateProfile);
 profileRouter.put('/password', updatePassword);
 profileRouter.delete('/', deleteAccount); 
 
