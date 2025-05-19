@@ -25,10 +25,85 @@ const transporter = nodemailer.createTransport({
     },
 });
 
-// Store OTPs temporarily
-const otpStorage = new Map();
+// Update your otpStorage to store both OTP and timestamp
+const otpStorage = new Map(); // Now stores { otp: string, timestamp: number }
 
-// Route for user login with OTP
+// Helper function to check if OTP is expired (2 minutes)
+const isOtpExpired = (timestamp) => {
+    const now = Date.now();
+    return now - timestamp > 2 * 60 * 1000; 
+};
+
+// Modified sendLoginOtp function
+const sendLoginOtp = async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        console.log("Login attempt for:", email);
+
+        if (!email || !password) {
+            return res.status(400).json({ message: "Email and password required" });
+        }
+
+        const user = await userModel.findOne({ email });
+        console.log("Found user:", user);
+
+        if (!user) {
+            console.log("User not found");
+            return res.status(401).json({ message: "Invalid credentials" });
+        }
+
+        if (!user.password) {
+            console.log("User has no password set");
+            return res.status(401).json({ message: "Invalid credentials" });
+        }
+
+        console.log("Comparing passwords...");
+        const isMatch = await bcrypt.compare(password, user.password);
+        console.log("Password match:", isMatch);
+
+        if (!isMatch) {
+            return res.status(401).json({ message: "Invalid credentials" });
+        }
+        
+        // Generate OTP
+        const otp = otpGenerator.generate(6, {
+            digits: true,
+            lowerCaseAlphabets: false,
+            upperCaseAlphabets: false,
+            specialChars: false
+        });
+
+        // Store OTP with timestamp
+        otpStorage.set(email, {
+            otp,
+            timestamp: Date.now()
+        });
+
+        // Send OTP email
+        await transporter.sendMail({
+            from: process.env.EMAIL_USER,
+            to: email,
+            subject: 'Your Login OTP',
+            text: `Your OTP is: ${otp}`,
+            html: `<h2>Your One-Time Password</h2>
+    <p>Hello valued Euphoria customer,</p>
+    <p>We received a request to log in to your account. Please use the following OTP to complete your login:</p>
+    <div class="otp-container">
+        <div class="otp-code">${otp}</div>
+    </div>
+    <p><strong>This OTP will expire in 2 minutes.</strong></p>
+    <p>If you didn't request this OTP, please ignore this email or contact our support team immediately.</p>`
+        });
+
+        res.status(200).json({ success: true, message: "OTP sent successfully" });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: "Failed to send OTP" });
+    }
+};
+
+// Modified loginUser function (OTP verification part)
 const loginUser = async (req, res) => {
     try {
         const { email, password, otp } = req.body;
@@ -52,10 +127,25 @@ const loginUser = async (req, res) => {
 
         // If OTP is provided, verify it
         if (otp) {
-            const storedOtp = otpStorage.get(email);
-            if (!storedOtp || storedOtp !== otp) {
+            const storedData = otpStorage.get(email);
+            
+            // Check if OTP exists
+            if (!storedData || !storedData.otp) {
+                return res.status(401).json({ success: false, message: "OTP not found or expired" });
+            }
+            
+            // Check if OTP is expired
+            if (isOtpExpired(storedData.timestamp)) {
+                otpStorage.delete(email);
+                return res.status(401).json({ success: false, message: "OTP expired" });
+            }
+            
+            // Verify OTP code
+            if (storedData.otp !== otp) {
                 return res.status(401).json({ success: false, message: "Invalid OTP" });
             }
+            
+            // Clear OTP after successful verification
             otpStorage.delete(email);
             
             // Generate token
@@ -75,75 +165,6 @@ const loginUser = async (req, res) => {
     }
 };
 
-// Route to send login OTP (after password verification)
-
-const sendLoginOtp = async (req, res) => {
-    try {
-        const { email, password } = req.body;
-        console.log("Login attempt for:", email); // Debug log
-
-        if (!email || !password) {
-            return res.status(400).json({ message: "Email and password required" });
-        }
-
-        const user = await userModel.findOne({ email });
-        console.log("Found user:", user); // Debug log
-
-        if (!user) {
-            console.log("User not found"); // Debug log
-            return res.status(401).json({ message: "Invalid credentials" });
-        }
-
-        if (!user.password) {
-            console.log("User has no password set"); // Debug log
-            return res.status(401).json({ message: "Invalid credentials" });
-        }
-
-        console.log("Comparing passwords..."); // Debug log
-        const isMatch = await bcrypt.compare(password, user.password);
-        console.log("Password match:", isMatch); // Debug log
-
-        if (!isMatch) {
-            return res.status(401).json({ message: "Invalid credentials" });
-        }
-        
-        // Generate OTP
-        const otp = otpGenerator.generate(6, {
-            digits: true,
-            lowerCaseAlphabets: false,
-            upperCaseAlphabets: false,
-            specialChars: false
-        });
-
-        // Store OTP
-        otpStorage.set(email, otp);
-
-        // Send OTP email
-        await transporter.sendMail({
-            from: process.env.EMAIL_USER,
-            to: email,
-            subject: 'Your Login OTP',
-            text: `Your OTP is: ${otp}`,
-            html: `<h2>Your One-Time Password</h2>
-    
-    <p>Hello valued Euphoria customer,</p>
-    
-    <p>We received a request to log in to your account. Please use the following OTP to complete your login:</p>
-    
-    <div class="otp-container">
-        <div class="otp-code">{${otp}}</div>
-    </div>
-    
-    <p>If you didn't request this OTP, please ignore this email or contact our support team immediately.</p>`
-        });
-
-        res.status(200).json({ success: true, message: "OTP sent successfully" });
-
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ success: false, message: "Failed to send OTP" });
-    }
-};
 
 // Route for user registration with OTP verification
 const registerUser = async (req, res) => {
@@ -166,9 +187,18 @@ const registerUser = async (req, res) => {
             return res.status(409).json({ success: false, message: "Email already registered" });
         }
 
-        // Verify OTP
-        const storedOtp = otpStorage.get(email);
-        if (!storedOtp || storedOtp !== otp) {
+        // Verify OTP with timestamp check
+        const storedData = otpStorage.get(email);
+        if (!storedData || !storedData.otp) {
+            return res.status(401).json({ success: false, message: "OTP not found or expired" });
+        }
+        
+        if (isOtpExpired(storedData.timestamp)) {
+            otpStorage.delete(email);
+            return res.status(401).json({ success: false, message: "OTP expired" });
+        }
+        
+        if (storedData.otp !== otp) {
             return res.status(401).json({ success: false, message: "Invalid OTP" });
         }
 
@@ -240,7 +270,11 @@ const sendRegistrationOtp = async (req, res) => {
             specialChars: false
         });
 
-        otpStorage.set(email, otp);
+       // Store with timestamp
+        otpStorage.set(email, {
+            otp,
+            timestamp: Date.now()
+        });
 
         await transporter.sendMail({
             from: process.env.EMAIL_USER,

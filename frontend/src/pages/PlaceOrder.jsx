@@ -204,7 +204,7 @@ const PlaceOrder = () => {
             <p className='text-gray-500 text-sm'>No addresses saved. Please add an address.</p>
           )}
           <button 
-            className='text-blue-500 mt-2 flex items-center gap-1'
+            className='text-pink-500 mt-2 flex items-center gap-1'
             onClick={() => setShowModal(true)}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
