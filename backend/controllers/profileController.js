@@ -1,12 +1,44 @@
 import bcrypt from "bcrypt";
 import userModel from "../models/userModel.js";
 
+const getProfile = async (req, res) => {
+    try {
+        const userId = req.body.userId; 
+        
+        const user = await userModel.findById(userId)
+            .select('-password -__v'); 
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            user: {
+                _id: user._id,
+                username: user.username,
+                email: user.email,
+                profile: user.profile || {} 
+            }
+        });
+    } catch (error) {
+        console.error("Get profile error:", error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to fetch profile"
+        });
+    }
+};
+
 const updateProfile = async (req, res) => {
     try {
         const { username, dateOfBirth, bloodGroup, gender } = req.body;
         const userId = req.body.userId;
 
-        // First, get the existing user profile
+        // First, get the existing user to merge profile data
         const user = await userModel.findById(userId);
         if (!user) {
             return res.status(404).json({ 
@@ -62,12 +94,11 @@ const updateProfile = async (req, res) => {
                 message: "Invalid gender" 
             });
         }
-
-        // Prepare update data by merging existing profile with new data
+        // Prepare update data
         const updateData = {
             ...(username && { username: username.toLowerCase() }),
             profile: {
-                ...user.username, // Keep existing profile data
+                ...user.profile, 
                 ...(dateOfBirth && { dateOfBirth: new Date(dateOfBirth) }),
                 ...(bloodGroup && { bloodGroup }),
                 ...(gender && { gender })
@@ -75,13 +106,13 @@ const updateProfile = async (req, res) => {
         };
 
         const updatedUser = await userModel.findByIdAndUpdate(
-            username,dateOfBirth,bloodGroup,gender,
-            { $set: updateData },
+            userId,  
+            updateData, 
             { 
                 new: true,
                 runValidators: true 
             }
-        ).select('_id -username -profile');
+        ).select('-password -__v');  // Fixed select syntax
 
         res.status(200).json({ 
             success: true, 
@@ -92,12 +123,14 @@ const updateProfile = async (req, res) => {
         if (error.name === 'ValidationError') {
             return res.status(400).json({ 
                 success: false, 
-                message: error.message 
+                message: error.message,
+                errors: error.errors 
             });
         }
         res.status(500).json({ 
             success: false, 
-            message: "Profile update failed" 
+            message: "Profile update failed",
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
 };
@@ -193,5 +226,6 @@ const deleteAccount = async (req, res) => {
 export { 
     updateProfile, 
     updatePassword, 
-    deleteAccount 
+    deleteAccount,
+    getProfile,
 };

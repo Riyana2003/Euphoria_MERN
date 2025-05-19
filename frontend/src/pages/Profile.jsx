@@ -1,5 +1,5 @@
-    /* eslint-disable no-unused-vars */
 /* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
@@ -11,7 +11,7 @@ const Profile = () => {
     const { backendUrl } = useContext(ShopContext);
     const [userData, setUserData] = useState(null);
     const [formData, setFormData] = useState({
-        username: '', 
+        username: '',
         dateOfBirth: '',
         bloodGroup: '',
         gender: '',
@@ -29,16 +29,17 @@ const Profile = () => {
 
     const fetchUserData = async () => {
         try {
-            const userId = localStorage.getItem('user_id');
-            if (!userId) {
-                toast.error('User ID not found. Please login again.');
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                toast.error('Please login again');
                 navigate('/login');
                 return;
             }
 
-            const token = localStorage.getItem('authToken');
-            const response = await axios.put(`${backendUrl}/api/profile/`, {
-                headers: { token }
+            const response = await axios.get(`${backendUrl}/api/profile/get`, {
+                headers: { 
+                    Authorization: `Bearer ${token}` 
+                }
             });
       
             const user = response.data?.user || {};
@@ -47,15 +48,18 @@ const Profile = () => {
             setUserData(user);
             setFormData(prev => ({
                 ...prev,
-                username: user.username || '', 
-                dateOfBirth: profile.dateOfBirth?.split('T')[0] || '',
+                username: user.username || '',
+                dateOfBirth: profile.dateOfBirth.split('T')[0]  || '',
                 bloodGroup: profile.bloodGroup || '',
                 gender: profile.gender || ''
             }));
-            setIsEditing(false);
         } catch (error) {
             console.error("Fetch error:", error);
             toast.error(error.response?.data?.message || 'Failed to load profile');
+            if (error.response?.status === 401) {
+                localStorage.removeItem('authToken');
+                navigate('/login');
+            }
         }
     };
 
@@ -69,12 +73,13 @@ const Profile = () => {
         try {
             const token = localStorage.getItem('authToken');
             if (!token) {
-                toast.error('Authentication token not found');
+                toast.error('Please login again');
+                navigate('/login');
                 return;
             }
             
-            const response = await axios.put(
-                `${backendUrl}/api/profile/`,
+            const response = await axios.post(
+                `${backendUrl}/api/profile/update`,
                 {
                     username: formData.username,
                     dateOfBirth: formData.dateOfBirth,
@@ -82,82 +87,94 @@ const Profile = () => {
                     gender: formData.gender
                 },
                 {
-                    headers: { token }
+                    headers: { 
+                        Authorization: `Bearer ${token}` 
+                    }
                 }
             );
 
             if (response.data.success) {
                 toast.success('Profile updated successfully');
-                setUserData(response.data.user);
+                await fetchUserData(); // Refresh data
                 setIsEditing(false);
-            } else {
-                toast.error(response.data.message || 'Profile update failed');
             }
         } catch (error) {
             console.error("Update profile error:", error);
             toast.error(error.response?.data?.message || 'Failed to update profile');
+            if (error.response?.status === 401) {
+                localStorage.removeItem('authToken');
+                navigate('/login');
+            }
         }
     };
 
-    // Update the password change handler
-const handleChangePassword = async (e) => {
-    e.preventDefault();
-    
-    if (formData.newPassword !== formData.confirmPassword) {
-        toast.error('Passwords do not match');
-        return;
-    }
-
-    try {
-        const token = localStorage.getItem('authToken');
-        const response = await axios.put(
-            `${backendUrl}/api/profile/password`,
-            {
-                currentPassword: formData.password,
-                newPassword: formData.newPassword
-            },
-            {
-                headers: { Authorization: `Bearer ${token}` } // Standard format
-            }
-        );
-
-        setFormData(prev => ({
-            ...prev,
-            password: '',
-            newPassword: '',
-            confirmPassword: ''
-        }));
-
-        toast.success(response.data.message || 'Password updated successfully');
-    } catch (error) {
-        console.error('Password update error:', error);
-        toast.error(error.response?.data?.message || 'Failed to update password');
-    }
-};
-
-// Fix the delete account handler
-const handleDeleteAccount = async (e) => {
-    e.preventDefault();
-    if (!window.confirm('Are you sure you want to delete your account?')) return;
-
-    try {
-        const token = localStorage.getItem('authToken');
-        await axios.delete(`${backendUrl}/api/profile`, {
-            data: { password: formData.deletePassword },
-            headers: { Authorization: `Bearer ${token}` }
-        });
+    const handleChangePassword = async (e) => {
+        e.preventDefault();
         
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('user_id');
-        toast.success('Account deleted successfully');
-        navigate('/');
-    } catch (error) {
-        console.error("Delete error:", error);
-        toast.error(error.response?.data?.message || 'Failed to delete account');
-    }
-};
+        if (formData.newPassword !== formData.confirmPassword) {
+            toast.error('Passwords do not match');
+            return;
+        }
 
-    if (!userData) return <div className="flex justify-center items-center h-screen">Loading...</div>;
+        try {
+            const token = localStorage.getItem('authToken');
+            const response = await axios.put(
+                `${backendUrl}/api/profile/password`,
+                {
+                    currentPassword: formData.password,
+                    newPassword: formData.newPassword
+                },
+                {
+                    headers: { 
+                        Authorization: `Bearer ${token}` 
+                    }
+                }
+            );
+
+            setFormData(prev => ({
+                ...prev,
+                password: '',
+                newPassword: '',
+                confirmPassword: ''
+            }));
+
+            toast.success(response.data.message || 'Password updated successfully');
+        } catch (error) {
+            console.error('Password update error:', error);
+            toast.error(error.response?.data?.message || 'Failed to update password');
+            if (error.response?.status === 401) {
+                localStorage.removeItem('authToken');
+                navigate('/login');
+            }
+        }
+    };
+
+    const handleDeleteAccount = async (e) => {
+        e.preventDefault();
+        if (!window.confirm('Are you sure you want to delete your account? This cannot be undone.')) return;
+
+        try {
+            const token = localStorage.getItem('authToken');
+            await axios.delete(`${backendUrl}/api/profile`, {
+                data: { password: formData.deletePassword },
+                headers: { 
+                    Authorization: `Bearer ${token}` }
+            });
+            
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('user_id');
+            toast.success('Account deleted successfully');
+            navigate('/');
+        } catch (error) {
+            console.error("Delete error:", error);
+            toast.error(error.response?.data?.message || 'Failed to delete account');
+            if (error.response?.status === 401) {
+                localStorage.removeItem('authToken');
+                navigate('/login');
+            }
+        }
+    };
+
 
     return (
         <div className="container mx-auto px-4 py-8">
