@@ -6,7 +6,7 @@ import { assets } from '../assets/assets';
 import ProductItem from '../components/ProductItem';
 
 const Lips = () => {
-  const { products, searchQuery } = useContext(ShopContext);
+  const { products } = useContext(ShopContext);
   const [showFilter, setShowFilter] = useState(false);
   const [filterProducts, setFilterProducts] = useState(
     products.filter((item) => item.category === 'Lips')
@@ -41,16 +41,6 @@ const Lips = () => {
       productsCopy = productsCopy.filter(item => brand.includes(item.brand))
     }
 
-    if (category.length > 0) {
-      productsCopy = productsCopy.filter(item => category.includes(item.category))
-    }
-    
-    if (searchQuery) {
-      productsCopy = productsCopy.filter((item) =>
-        item.name.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
     setFilterProducts(productsCopy)
   }
 
@@ -78,7 +68,7 @@ const Lips = () => {
 
   useEffect(() => {
     applyFilter();
-  }, [brand, category, searchQuery])
+  }, [brand])
 
   useEffect(() => {
     sortProduct()
