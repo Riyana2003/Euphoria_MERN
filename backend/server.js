@@ -16,7 +16,7 @@ const port = process.env.PORT || 4000;
 
 // Enhanced CORS configuration
 const allowedOrigins = [
-  'https://euphoria-mern-git-develop-riyana-shresthas-projects.vercel.app',
+  'https://euphoria-mern.vercel.app',
   'http://localhost:5173',
   'http://localhost:5174',
   'http://localhost:4000',
