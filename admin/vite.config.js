@@ -1,10 +1,22 @@
 import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import react from '@vitejs/plugin-react'
 
-// https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(),tailwindcss()],
-  server: {port: 5174}
+  plugins: [react(), tailwindcss()],
+  server: {
+    port: 5174, 
+    proxy: {
+      '/api': {
+        target: 'https://euphoria.vercel.app',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS'
+        }
+      }
+    }
+  }
 })
-
