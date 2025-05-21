@@ -21,7 +21,13 @@ import heroRouter from './routes/heroRoute.js';
 
   // Middlewares
   app.use(express.json());
-  app.use(cors());
+ app.use(cors({
+  origin: [
+    'https://euphoria.vercel.app',
+    'http://localhost:4000'
+  ],
+  credentials: true
+}));
 
   // API Endpoints
   app.use('/api/user', userRouter);
