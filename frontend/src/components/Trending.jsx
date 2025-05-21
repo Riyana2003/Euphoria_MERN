@@ -27,7 +27,7 @@ const Trending = () => {
 
   return (
     <div className="my-10 w-full mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-      {/* Title and View All */}
+      {/* Title */}
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl sm:text-3xl font-bold text-gray-800">Trending</h2>
         
