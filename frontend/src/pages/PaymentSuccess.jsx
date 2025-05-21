@@ -5,7 +5,7 @@ import { toast } from 'react-toastify';
 
 const PaymentSuccess = () => {
   const [searchParams] = useSearchParams();
-  const { backendUrl, token, setCartItems } = useContext(ShopContext) || { backendUrl , token: null };
+  const { backendUrl, token, setCartItems } = useContext(ShopContext) || { backendUrl: 'http://localhost:4000', token: null };
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
 

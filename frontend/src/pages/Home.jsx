@@ -5,6 +5,7 @@ import Trending from '../components/Trending'
 import BestSeller from '../components/BestSeller'
 import CategorySection from '../components/CategorySection'
 import Policy_Banner from '../components/Policy_Banner'
+import Footer from '../components/Footer'
 
 const Home = () => {
   return (
