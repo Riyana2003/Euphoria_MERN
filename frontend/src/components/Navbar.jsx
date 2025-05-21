@@ -124,59 +124,7 @@ const Navbar = () => {
             />
           </Link>
 
-          {/* Search Section - Desktop */}
-          <div className="hidden sm:flex flex-grow mx-4 lg:mx-8 relative">
-            <div className="relative w-full" ref={searchRef}>
-              <form onSubmit={handleSearchSubmit} className="relative w-full">
-                <input
-                  type="text"
-                  value={searchInput}
-                  onChange={handleSearch}
-                  onFocus={() => searchInput && setShowSearchResults(true)}
-                  placeholder="Search for your products"
-                  className="border border-gray-300 rounded-full px-4 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-pink-500 pl-4 pr-10"
-                />
-                <button
-                  type="submit"
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2"
-                >
-                  <img
-                    src={assets.search}
-                    alt="Search"
-                    className="w-5 h-5 cursor-pointer"
-                  />
-                </button>
-              </form>
-
-              {/* Search Results Dropdown */}
-              {showSearchResults && searchResults?.length > 0 && (
-                <div className="absolute top-12 left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg z-[1000] max-h-96 overflow-y-auto">
-                  {searchResults?.map((product) => (
-                    <button
-                      key={product._id}
-                      onClick={() => handleProductClick(product)}
-                      className="w-full text-left flex items-center p-3 hover:bg-gray-100 border-b border-gray-100"
-                    >
-                      <img
-                        src={product.image[0]}
-                        alt={product.name}
-                        className="w-10 h-10 object-cover rounded mr-3"
-                      />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-gray-800">
-                          {product.name}
-                        </p>
-                        <p className="text-xs text-gray-500">{product.brand}</p>
-                      </div>
-                      <p className="text-sm font-bold text-pink-500">
-                        Rs. {product.price}
-                      </p>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+          
 
           {/* Navbar Items */}
           <div className="flex items-center gap-4">
@@ -424,8 +372,62 @@ const Navbar = () => {
           </div>
         </div>
 
+        {/* Search Section - Desktop */}
+          <div className="hidden sm:flex flex-grow mx-4 lg:mx-8 relative">
+            <div className="relative w-full" ref={searchRef}>
+              <form onSubmit={handleSearchSubmit} className="relative w-full">
+                <input
+                  type="text"
+                  value={searchInput}
+                  onChange={handleSearch}
+                  onFocus={() => searchInput && setShowSearchResults(true)}
+                  placeholder="Search for your products"
+                  className="border border-gray-300 rounded-full px-4 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-pink-500 pl-4 pr-10"
+                />
+                <button
+                  type="submit"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2"
+                >
+                  <img
+                    src={assets.search}
+                    alt="Search"
+                    className="w-5 h-5 cursor-pointer"
+                  />
+                </button>
+              </form>
+
+              {/* Search Results Dropdown */}
+              {showSearchResults && searchResults?.length > 0 && (
+                <div className="absolute top-12 left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg z-[1000] max-h-96 overflow-y-auto">
+                  {searchResults?.map((product) => (
+                    <button
+                      key={product._id}
+                      onClick={() => handleProductClick(product)}
+                      className="w-full text-left flex items-center p-3 hover:bg-gray-100 border-b border-gray-100"
+                    >
+                      <img
+                        src={product.image[0]}
+                        alt={product.name}
+                        className="w-10 h-10 object-cover rounded mr-3"
+                      />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-800">
+                          {product.name}
+                        </p>
+                        <p className="text-xs text-gray-500">{product.brand}</p>
+                      </div>
+                      <p className="text-sm font-bold text-pink-500">
+                        Rs. {product.price}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
         {/* ALL CATEGORY Section - Desktop */}
-        <div className="hidden px-6 lg:px-16 sm:flex bg-gray-100 py-3 border-t flex-wrap items-center justify-between">
+        <div className="hidden px-6 lg:px-16 sm:flex bg-gray-100 py-3 border-t mt-5 flex-wrap items-center justify-between">
           <NavLink
             to="/"
             className={({ isActive }) =>
