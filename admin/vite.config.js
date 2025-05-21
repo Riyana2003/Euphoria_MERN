@@ -8,7 +8,7 @@ export default defineConfig({
     port: 5174, 
     proxy: {
       '/api': {
-        target: 'https://euphoria.vercel.app',
+        target: 'https://euphoria-mern-git-develop-riyana-shresthas-projects.vercel.app',
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/api/, ''),

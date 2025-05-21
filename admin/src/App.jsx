@@ -13,7 +13,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import HeroManager from './pages/HeroManager';
 
 
-export const backendUrl = import.meta.env.VITE_BACKEND_URL || 'https://euphoria.vercel.app';
+export const backendUrl = import.meta.env.VITE_BACKEND_URL || 'https://euphoria-mern-git-develop-riyana-shresthas-projects.vercel.app';
 export const currency = 'Rs.'
 
 const App = () => {
