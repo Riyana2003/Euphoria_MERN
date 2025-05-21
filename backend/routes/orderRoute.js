@@ -11,11 +11,11 @@ orderRouter.get('/list', adminAuth, allOrders)
 orderRouter.post('/status', adminAuth, updateStatus)
 
 // Payment Features
-orderRouter.post('/place', authUser, attachProducts, placeOrder)
-orderRouter.post('/khalti/initiate',authUser, attachProducts,initiateKhaltiPayment)
+orderRouter.post('/place', authUser,  placeOrder)
+orderRouter.post('/khalti/initiate',authUser, initiateKhaltiPayment)
 orderRouter.post('/khalti/verify', authUser, verifyKhaltiPayment)
 
 // User Feature
-orderRouter.post('/userorders', authUser,attachProducts, userOrders)
+orderRouter.post('/userorders', authUser, userOrders)
 
 export default orderRouter

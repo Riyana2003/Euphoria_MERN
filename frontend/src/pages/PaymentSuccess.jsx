@@ -1,16 +1,21 @@
-import { useEffect, useContext, useState } from 'react';
+import { useEffect, useContext, useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ShopContext } from '../context/ShopContext';
 import { toast } from 'react-toastify';
 
 const PaymentSuccess = () => {
   const [searchParams] = useSearchParams();
-  const { backendUrl, token, setCartItems } = useContext(ShopContext) || { backendUrl , token: null };
+  const { backendUrl, token, setCartItems } = useContext(ShopContext) || { backendUrl, token: null };
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
+  const hasVerifiedRef = useRef(false); // Using `useRef` instead of state
 
   useEffect(() => {
     const verifyPayment = async () => {
+      // Prevent multiple executions
+      if (hasVerifiedRef.current) return;
+      hasVerifiedRef.current = true; // Mark as verified immediately
+
       const pidx = searchParams.get('pidx');
 
       if (!pidx) {
@@ -39,9 +44,7 @@ const PaymentSuccess = () => {
       } catch (error) {
         console.error('Payment verification failed:', error);
         toast.error('Payment verification failed. Please try again.');
-      } 
-      
-    finally {
+      } finally {
         // Clear cart
         if (typeof setCartItems === 'function') {
           setCartItems({});
@@ -54,7 +57,12 @@ const PaymentSuccess = () => {
     };
 
     verifyPayment();
-  }, [searchParams, navigate, backendUrl, token, setCartItems]);
+
+    // Cleanup function 
+    return () => {
+      hasVerifiedRef.current = true;
+    };
+  }, [searchParams, navigate, backendUrl, token, setCartItems]); 
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
