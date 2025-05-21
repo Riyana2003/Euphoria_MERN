@@ -95,67 +95,67 @@ const ShopContextProvider = (props) => {
     return true;
   };
 
-const addToCart = async (itemId, shadeName, quantity) => {
-  if (!token) {
-    toast.error("Please login to add items to your cart");
-    return;
-  }
+  const addToCart = async (itemId, shadeName, quantity) => {
+    if (!token) {
+      toast.error("Please login to add items to your cart");
+      return;
+    }
 
-  if (!quantity || quantity <= 0) {
-    toast.error("Please select a valid quantity");
-    return;
-  }
+    if (!quantity || quantity <= 0) {
+      toast.error("Please select a valid quantity");
+      return;
+    }
 
-  const product = findProductById(itemId);
-  if (!product) {
-    toast.error("Product not found");
-    return;
-  }
+    const product = findProductById(itemId);
+    if (!product) {
+      toast.error("Product not found");
+      return;
+    }
 
-  // Check if shade is required (not a tool)
-  if (product.category !== 'Tools' && !shadeName) {
-    toast.error("Please select a shade");
-    return;
-  }
+    // Check if shade is required (not a tool)
+    if (product.category !== 'Tools' && !shadeName) {
+      toast.error("Please select a shade");
+      return;
+    }
 
-  // For tools, we'll use a default shade name if not provided
-  const finalShadeName = shadeName || (product.category === 'Tools' ? 'Default' : null);
+    // For tools, we'll use a default shade name if not provided
+    const finalShadeName = shadeName || (product.category === 'Tools' ? 'Default' : null);
 
-  // Validate shade only if it's required and provided
-  if (product.category !== 'Tools' && finalShadeName && !validateShade(itemId, finalShadeName)) {
-    return;
-  }
+    // Validate shade only if it's required and provided
+    if (product.category !== 'Tools' && finalShadeName && !validateShade(itemId, finalShadeName)) {
+      return;
+    }
 
-  const shadeInfo = product.shades?.find(shade => shade.name === finalShadeName) || {};
+    const shadeInfo = product.shades?.find(shade => shade.name === finalShadeName) || {};
 
-  setCartItems(prev => {
-    const newCart = { ...prev };
-    if (!newCart[itemId]) newCart[itemId] = {};
-    
-    newCart[itemId][finalShadeName] = {
-      quantity: (newCart[itemId][finalShadeName]?.quantity || 0) + quantity,
-      shadeData: shadeInfo
-    };
-    
-    return newCart;
-  });
+    setCartItems(prev => {
+      const newCart = { ...prev };
+      if (!newCart[itemId]) newCart[itemId] = {};
+      
+      newCart[itemId][finalShadeName] = {
+        quantity: (newCart[itemId][finalShadeName]?.quantity || 0) + quantity,
+        shadeData: shadeInfo
+      };
+      
+      return newCart;
+    });
 
-  try {
-    await axios.post(
-      `${backendUrl}/api/cart/add`, 
-      { itemId, shade: finalShadeName, quantity }, 
-      {
-        headers: {
-          Authorization: `Bearer ${token}`
+    try {
+      await axios.post(
+        `${backendUrl}/api/cart/add`, 
+        { itemId, shade: finalShadeName, quantity }, 
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
         }
-      }
-    );
-    toast.success("Item added to cart successfully!");
-  } catch (error) {
-    console.error("Error adding item to cart:", error);
-    toast.error(error.response?.data?.message || "Failed to add item to cart");
-  }
-};
+      );
+      toast.success("Item added to cart successfully!");
+    } catch (error) {
+      console.error("Error adding item to cart:", error);
+      toast.error(error.response?.data?.message || "Failed to add item to cart");
+    }
+  };
 
   const updateCart = async (itemId, shadeName, newQuantity) => {
     if (newQuantity <= 0) {
@@ -232,11 +232,15 @@ const addToCart = async (itemId, shadeName, quantity) => {
 
   const getUserCart = async () => {
     try {
-      const response = await axios.post(`${backendUrl}/api/cart/get`, {
-        headers: {
-          Authorization: `Bearer ${token}`
+      const response = await axios.post(
+        `${backendUrl}/api/cart/get`,
+        {}, 
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
         }
-      });
+      );
       
       if (response.data.success) {
         const cartItems = {};
@@ -257,6 +261,14 @@ const addToCart = async (itemId, shadeName, quantity) => {
       }
     } catch (error) {
       console.error("Error fetching user cart:", error);
+      if (error.response?.status === 401) {
+        // Token is invalid/expired - clear auth data
+        setToken("");
+        setUsername("");
+        localStorage.removeItem("authToken");
+        localStorage.removeItem("username");
+        toast.error("Session expired. Please login again.");
+      }
     }
   };
 

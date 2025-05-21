@@ -6,7 +6,7 @@ import { assets } from '../assets/assets';
 import ProductItem from '../components/ProductItem';
 
 const Face = () => {
-  const { products, searchQuery } = useContext(ShopContext);
+  const { products } = useContext(ShopContext);
   const [showFilter, setShowFilter] = useState(false);
   const [filterProducts, setFilterProducts] = useState(
     products.filter((item) => item.category === 'Face')
@@ -45,12 +45,6 @@ const Face = () => {
       productsCopy = productsCopy.filter(item => category.includes(item.category))
     }
     
-    if (searchQuery) {
-      productsCopy = productsCopy.filter((item) =>
-        item.name.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
     setFilterProducts(productsCopy)
   }
 
@@ -71,14 +65,14 @@ const Face = () => {
   }
 
   useEffect(() => {
-    // Initialize with eyes products on first render
+    // Initialize with face products on first render
     const initialProducts = products.filter((item) => item.category === 'Face');
     setFilterProducts(initialProducts);
   }, [products]); // Add products as dependency
 
   useEffect(() => {
     applyFilter();
-  }, [brand, category, searchQuery])
+  }, [brand])
 
   useEffect(() => {
     sortProduct()
